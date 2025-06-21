@@ -347,6 +347,7 @@ export class Lexer {
 		},
 		'@': {
 			'"': this.lexVerbatimString,
+			'`': this.lexVerbatimString,
 			fallback: TokenKind.LAMBDA
 		},
 		'"': this.lexString,
