@@ -48,19 +48,21 @@ type CompletionCache = {
 const completionCache = new Map<string, CompletionCache>();
 
 export async function onCompletionHandler(params: CompletionParams): Promise<CompletionItem[]> {
+	const items: CompletionItem[] = [];
+
 	const document = documents.get(params.textDocument.uri);
 	if (!document) {
-		return [];
+		return items;
 	}
 
 	const settings = await getDocumentSettings(document.uri);
 	if (!settings.enableCompletions) {
-		return [];
+		return items;
 	}
 
 	const info = documentInfo.get(document.uri);
 	if (!info) {
-		return [];
+		return items;
 	}
 	const lexer = info.lexer;
 	
@@ -80,40 +82,36 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 	if (result.token) {
 		const kind = result.token.kind;
 		if (kind === TokenKind.LINE_COMMENT || kind === TokenKind.BLOCK_COMMENT) {
-			return [];
+			return items;
 		}
 
 		if (kind === TokenKind.DOC) {
 			if (triggerChar !== '@') {
-				return [];
+				return items;
 			}
 
-			const items: CompletionItem[] = [];
 			addCompletionItems(document.uri, items, DocKind.DocSnippets, CompletionItemKind.Snippet);
 			return items;
 		}
 		
 		if ((kind === TokenKind.STRING || kind === TokenKind.VERBATIM_STRING) && result.token.end !== offset) {
 			if (triggerChar === '@') {
-				return [];
+				return items;
 			}
 
+			const range = convertOffsetsToRange(document, result.token.start + 1, result.token.end - 1);
 			const iterator = new TokenIterator(lexer.getTokens(), result.index - 1);
-			const items = stringCompletion(document.uri, result.token.value, iterator);
-			if (items) {
-				cache.modifyRange = convertOffsetsToRange(document, result.token.start, result.token.end);
+
+			if (stringCompletion(document.uri, items, range, iterator)) {
 				return items;
 			}
 		}
 	}
 	// These should only work if the user writes inside a doc / string
 	if (triggerChar === '@' || triggerChar === '/') {
-		return [];
+		return items;
 	}
 
-
-	const items: CompletionItem[] = [];
-	
 	const iterator = new TokenIterator(lexer.getTokens(), result.index);
 
 	const kind = declarationKind(iterator);
@@ -130,7 +128,7 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 			data: { uri: document.uri }
 		}];
 	} else if (kind) {
-		return [];
+		return items;
 	}
 
 	iterator.setIndex(result.index);
@@ -197,15 +195,12 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 	return items;
 }
 
-function addPlainCompletionItems(uri: string, items: CompletionItem[], completionItemKind: CompletionItemKind, docs: Set<string>, kind?: StringKind) {
+function addPlainCompletionItems(uri: string, items: CompletionItem[], completionItemKind: CompletionItemKind, docs: Set<string>) {
 	for (const item of docs) {
 		items.push({
 			label: item,
 			kind: completionItemKind,
-			data: {
-				uri,
-				kind
-			}
+			data: { uri }
 		});
 	}
 }
@@ -236,75 +231,62 @@ function addCompletionItems(uri: string, items: CompletionItem[], docKind: DocKi
 	}
 }
 
-function addStringCompletionItems(uri: string, items: CompletionItem[], value: string, stringKind: StringKind): void {
-	if (value.length === 0) {
-		addPlainCompletionItems(uri, items, CompletionItemKind.Value, globals.stringCompletions[stringKind], stringKind);
-		return;
-	}
+function addStringCompletionItems(uri: string, items: CompletionItem[], range: Range, kind: StringKind) {
+	const docs = globals.stringCompletions[kind];
 
-	const dotIndex = value.lastIndexOf('.');
-	const slashIndex = value.lastIndexOf('/');
-	const lastDelimiterIndex = Math.max(dotIndex, slashIndex);
-	if (lastDelimiterIndex === -1) {
-		addPlainCompletionItems(uri, items, CompletionItemKind.Value, globals.stringCompletions[stringKind], stringKind);
-		return;
-	}
-
-	const cutValue = value.slice(0, lastDelimiterIndex + 1);
-	for (const item of globals.stringCompletions[stringKind]) {
-		if (item.startsWith(cutValue)) {
-			items.push({
-				label: item.slice(cutValue.length),
-				kind: CompletionItemKind.Value,
-				data: { uri, kind: stringKind }
-			});
-		}
+	for (const item of docs) {
+		items.push({
+			label: item,
+			kind: CompletionItemKind.Value,
+			data: {
+				uri,
+				kind
+			},
+			textEdit: TextEdit.replace(range, item)
+		});
 	}
 }
 
-function stringCompletion(uri: string, value: string, iterator: TokenIterator): CompletionItem[] | null {
+function stringCompletion(uri: string, items: CompletionItem[], range: Range, iterator: TokenIterator): boolean {
+	
 	if (!iterator.hasPrevious()) {
-		return null;
+		return false;
 	}
 
 	const token = iterator.previous();
 	if (token.kind !== TokenKind.COMMA) {
 		if (token.kind !== TokenKind.LEFT_ROUND) {
-			return null;
+			return false;
 		}
 
 		const doc = iterator.findMethodDoc();
 		if (!doc) {
-			return null;
+			return false;
 		}
 
 		const stringKind = doc[0];
 		if (stringKind === undefined) {
-			return null;
+			return false;
 		}
 
-		const items: CompletionItem[] = [];
-		addStringCompletionItems(uri, items, value, stringKind);
-		
-		return items;
+		addStringCompletionItems(uri, items, range, stringKind);
+		return true;
 	}
 
 	const paramCount = readParamCount(iterator);
 
 	const doc = iterator.findMethodDoc();
 	if (!doc) {
-		return null;
-	}
+		return true;
+	}	
 
 	const stringKind = doc[paramCount + 1];
 	if (stringKind === undefined) {
-		return null;
+		return true;
 	}
 
-	const items: CompletionItem[] = [];
-	addStringCompletionItems(uri, items, value, stringKind);
-
-	return items;
+	addStringCompletionItems(uri, items, range, stringKind);
+	return true;
 }
 
 function declarationKind(iterator: TokenIterator): TokenKind | null {
@@ -490,29 +472,6 @@ export async function onCompletionResolveHandler(item: CompletionItem): Promise<
 	}
 
 	if (item.kind === CompletionItemKind.Value) {
-		/*
-		const range = completionCache.get(document.uri)!;
-		
-		item.insertText = `"${item.label.replaceAll('"', '\\"')}"`;
-		const startingQuote = {
-			start: range.start,
-			end: {
-				line: range.start.line,
-				character: range.start.character + 1
-			}
-		}
-		const endQuote = {
-			start: {
-				line: range.end.line,
-				character: range.end.character - 1
-			},
-			end: range.end
-		}
-		item.additionalTextEdits = [
-			TextEdit.del(startingQuote),
-			TextEdit.del(endQuote)
-		]
-		*/
 		item.insertText = item.label.replaceAll('"', '\\"');
 
 		if (!StringKind[item.data.kind].endsWith("PROPERTY")) {
