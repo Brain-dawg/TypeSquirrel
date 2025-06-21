@@ -81,14 +81,6 @@
 				}
 			]
 		},
-		"verbatim-string-escape-sequences": {
-			"patterns": [
-				{
-					"name": "constant.character.escape.squirrel",
-					"match": "\"\""
-				}
-			]
-		},
 		"string-escape-sequences": {
 			"patterns": [
 				{
@@ -122,6 +114,14 @@
 				{
 					"name": "invalid.illegal.escape.squirrel",
 					"match": "\\\\."
+				}
+			]
+		},
+		"verbatim-string-escape-sequences": {
+			"patterns": [
+				{
+					"name": "constant.character.escape.squirrel",
+					"match": "\""
 				}
 			]
 		},
@@ -281,7 +281,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "(?<!\")\"(?!\")",
+					"end": "\"(?!\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -292,7 +292,8 @@
 							"include": "#comments"
 						},
 						{
-							"include": "#verbatim-string-escape-sequences"
+							"name": "constant.character.escape.squirrel",
+							"match": "\"\""
 						},
 						{
 							"include": "#format-specifiers"
@@ -371,7 +372,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\"",
+					"end": "\"(?!\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -382,7 +383,8 @@
 							"include": "#comments"
 						},
 						{
-							"include": "#verbatim-string-escape-sequences"
+							"name": "constant.character.escape.squirrel",
+							"match": "\"\""
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -427,7 +429,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "(?<!\")\"(?!\")",
+					"end": "\"(?!\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -435,7 +437,8 @@
 					},
 					"patterns": [
 						{
-							"include": "#verbatim-string-escape-sequences"
+							"name": "constant.character.escape.squirrel",
+							"match": "\"\""
 						},
 						{
 							"include": "#format-specifiers"
@@ -487,7 +490,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\\\\\"",
+					"end": "\\\\\"(?!\\\\\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -496,6 +499,10 @@
 					"patterns": [
 						{
 							"include": "#comments"
+						},
+						{
+							"name": "constant.character.escape.squirrel",
+							"match": "\\\\\"\\\\\""
 						},
 						{
 							"include": "#format-specifiers"
@@ -574,7 +581,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\\\\\"",
+					"end": "\\\\\"(?!\\\\\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -583,6 +590,10 @@
 					"patterns": [
 						{
 							"include": "#comments"
+						},
+						{
+							"name": "constant.character.escape.squirrel",
+							"match": "\\\\\"\\\\\""
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -626,13 +637,17 @@
 							"name": "punctuation.definition.string.begin.squirrel"
 						}
 					},
-					"end": "\\\\\"",
+					"end": "\\\\\"(?!\\\\\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel"
 						}
 					},
 					"patterns": [
+						{
+							"name": "constant.character.escape.squirrel",
+							"match": "\\\\\"\\\\\""
+						},
 						{
 							"include": "#format-specifiers"
 						}
@@ -680,7 +695,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "`",
+					"end": "`(?!`)",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -689,6 +704,10 @@
 					"patterns": [
 						{
 							"include": "#comments"
+						},
+						{
+							"name": "constant.character.escape.squirrel",
+							"match": "``"
 						},
 						{
 							"include": "#format-specifiers"
@@ -767,7 +786,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "`",
+					"end": "`(?!`)",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -776,6 +795,10 @@
 					"patterns": [
 						{
 							"include": "#comments"
+						},
+						{
+							"name": "constant.character.escape.squirrel",
+							"match": "``"
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -819,13 +842,17 @@
 							"name": "punctuation.definition.string.begin.squirrel"
 						}
 					},
-					"end": "`",
+					"end": "`(?!`)",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel"
 						}
 					},
 					"patterns": [
+						{
+							"name": "constant.character.escape.squirrel",
+							"match": "``"
+						},
 						{
 							"include": "#format-specifiers"
 						}
