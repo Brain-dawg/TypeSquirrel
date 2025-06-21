@@ -103,6 +103,8 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 			const iterator = new TokenIterator(lexer.getTokens(), result.index - 1);
 
 			if (stringCompletion(document.uri, items, range, iterator)) {
+				cache.modifyRange = range;
+				
 				return items;
 			}
 		}
@@ -472,7 +474,11 @@ export async function onCompletionResolveHandler(item: CompletionItem): Promise<
 	}
 
 	if (item.kind === CompletionItemKind.Value) {
-		item.insertText = item.label.replaceAll('"', '\\"');
+		let replaced = false;
+		let text = item.label.replace(/"/g, () => {
+			replaced = true;
+			return '\\"';
+		});
 
 		if (!StringKind[item.data.kind].endsWith("PROPERTY")) {
 			item.command = {
@@ -480,11 +486,19 @@ export async function onCompletionResolveHandler(item: CompletionItem): Promise<
 				title: 'Move Cursor',
 				arguments: [{ to: 'right', by: 'character', value: 1 }]
 			};
+
+			if (replaced) {
+				item.textEdit = TextEdit.replace(completionCache.get(item.data.uri)!.modifyRange!, text);
+			}
+
 			return item;
 		}
 		
 		let snippet_id = 0;
-		item.insertText = item.insertText.replace(/\d+/g, (match) => `\${${snippet_id++}:${match}}`);
+		text = text.replace(/\d+/g, (match) => {
+			replaced = true;
+			return `\${${snippet_id++}:${match}}`;
+		});
 		if (snippet_id !== 0) {
 			item.insertTextFormat = InsertTextFormat.Snippet;
 		} else {
@@ -493,6 +507,10 @@ export async function onCompletionResolveHandler(item: CompletionItem): Promise<
 				title: 'Move Cursor',
 				arguments: [{ to: 'right', by: 'character', value: 1 }]
 			};
+		}
+
+		if (replaced) {
+			item.textEdit = TextEdit.replace(completionCache.get(item.data.uri)!.modifyRange!, text);
 		}
 		
 		return item;
