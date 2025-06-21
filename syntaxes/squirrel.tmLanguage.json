@@ -9,6 +9,9 @@
 			"include": "#strings"
 		},
 		{
+			"include": "#strings-runscriptcode"
+		},
+		{
 			"include": "#code-blocks"
 		}
 	],
