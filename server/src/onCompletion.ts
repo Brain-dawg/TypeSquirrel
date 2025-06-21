@@ -108,7 +108,7 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 		}
 	}
 	// These should only work if the user writes inside a doc / string
-	if (triggerChar === '@' || triggerChar === '/') {
+	if (triggerChar === '@') {
 		return items;
 	}
 
