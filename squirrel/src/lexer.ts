@@ -105,12 +105,6 @@ export const enum TokenKind {
 	DOC
 };
 
-export interface TokenError {
-	message: string,
-	start: number,
-	end: number
-}
-
 export const tokenKindToString = new Map<TokenKind, string>([
 	[TokenKind.EOF, 'EOF'],
 
@@ -268,6 +262,11 @@ export function isTokenAString(token: Token): boolean {
 }
 
 
+export interface TokenError {
+	message: string,
+	start: number,
+	end: number
+}
 
 export interface Token {
 	kind: TokenKind;
@@ -568,7 +567,7 @@ export class Lexer {
 		const sourcePositions: number[] = [this.getSourcePosition()];
 
 		let value = "";
-
+		
 		this.next();
 		while (!this.readEOF) {
 			const charCode = this.charCode();
@@ -629,9 +628,8 @@ export class Lexer {
 					// ` is converted into \", so \` gets us \\", which means that after escaping the result would be \"
 					value += '\\"';
 
-					sourcePositions.push(this.getSourcePosition(-1), this.getSourcePosition());
-					this.next();
-					continue;
+					sourcePositions.push(this.getSourcePosition(-1));
+					break;
 				default:
 					this.errors.push({ message: "Unrecognised escape character.", start: this.getSourcePosition(-2), end: this.getSourcePosition() });
 				}
