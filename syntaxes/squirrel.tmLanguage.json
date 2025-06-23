@@ -112,7 +112,7 @@
 				},
 				{
 					"name": "constant.character.escape.squirrel",
-					"match": "\\\\[0tabnrvf\"\\\\']"
+					"match": "\\\\[0tabnrvf\"\\\\'`]"
 				},
 				{
 					"name": "invalid.illegal.escape.squirrel",
