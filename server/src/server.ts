@@ -188,10 +188,11 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	const settings = await getDocumentSettings(document.uri);
 	const text = document.getText();
 	const lexer = new Lexer(text);
-	/*
+	
 	for (let token = lexer.lex(); token.kind !== TokenKind.EOF; token = lexer.lex()) {
 		// lex
-	}*/
+	}
+	
 	const parser = new Parser(lexer);
 	parser.parse();
 
