@@ -18,7 +18,7 @@ export default async function onCodeActionHandler(params: CodeActionParams): Pro
 	if (!info) {
 		return [];
 	}
-	const { lexer } = info;
+	let lexer = info.globalLexer;
 
 	
 	const fixes: CodeAction[] = [];
@@ -36,9 +36,11 @@ export default async function onCodeActionHandler(params: CodeActionParams): Pro
 			if (!entry) {
 				continue;
 			}
+
+			const result = lexer.findTokenAtPosition(document.offsetAt(diagnostic.range.end));
+			lexer = result.lexer;
 			
-			const tokenIndex = lexer.findTokenAtPosition(document.offsetAt(diagnostic.range.end)).index;
-			const iterator = new TokenIterator(lexer.getTokens(), tokenIndex);
+			const iterator = new TokenIterator(lexer.getTokens(), result.index);
 
 			const param = getFirstParam(document, iterator);
 			

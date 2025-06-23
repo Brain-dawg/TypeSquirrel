@@ -18,13 +18,15 @@ export default async function onHoverHandler(params: TextDocumentPositionParams)
 	if (!info) {
 		return null;
 	}
-	const { lexer } = info;
+	let lexer = info.globalLexer;
 
 
 	const position = params.position;
 	const offset = document.offsetAt(position) - 1;
 
 	const result = lexer.findTokenAtPosition(offset);
+	lexer = result.lexer;
+	
 	if (!result.token || isTokenAComment(result.token) || result.token.kind !== TokenKind.IDENTIFIER) {
 		return null;
 	}

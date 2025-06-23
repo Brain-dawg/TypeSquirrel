@@ -1,7 +1,7 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, Position, TextDocumentPositionParams, TextEdit } from 'vscode-languageserver';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { documents, getDocumentSettings, documentInfo } from './server';
-import { Token, TokenIterator, TokenKind, globals, StringKind } from 'squirrel';
+import { Token, TokenIterator, TokenKind, globals, StringKind, Lexer } from 'squirrel';
 
 function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
 	return {
@@ -37,11 +37,12 @@ const docKindToDocs = new Map<DocKind, globals.Docs>([
 	[DocKind.DocSnippets, globals.docSnippets]
 ]);
 
-type CompletionCache = {
+interface CompletionCache {
 	modifyRange?: Range;
 	searchResult: {
 		token: Token | null;
 		index: number;
+		lexer: Lexer;
 	}
 }
 
@@ -64,13 +65,13 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 	if (!info) {
 		return items;
 	}
-	const lexer = info.lexer;
+	let lexer = info.globalLexer;
 	
 	const position = params.position;
 	const offset = document.offsetAt(position);
 
 	const result = lexer.findTokenAtPosition(offset - 1);
-
+	lexer = result.lexer;
 
 	const cache: CompletionCache = {
 		searchResult: result
@@ -410,14 +411,13 @@ const paranthesisKeywords = new Set<string>([
 
 // Checks whether the function is used as a statement or as an expression
 function functionParanthesis(document: TextDocument): boolean {
-	const info = documentInfo.get(document.uri);
-	if (!info) {
+	const cache = completionCache.get(document.uri);
+	if (!cache) {
 		return false;
 	}
-	const lexer = info.lexer;
 
-	const result = completionCache.get(document.uri)!.searchResult;
-	const iterator = new TokenIterator(lexer.getTokens(), result.index);
+	const { searchResult } = cache;
+	const iterator = new TokenIterator(searchResult.lexer.getTokens(), searchResult.index);
 
 	if (!iterator.hasPrevious()) {
 		return false;

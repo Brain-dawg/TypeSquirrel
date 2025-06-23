@@ -1,4 +1,4 @@
-import { dummyToken, Lexer, Token, TokenKind, tokenKindToString } from "./lexer";
+import { Lexer, Token, TokenKind, tokenKindToString } from "./lexer";
 
 export interface ASTNode {
 	type: string;
@@ -65,7 +65,7 @@ export class Parser {
 	private readonly lexer: Lexer;
 
 	private token: Token;
-	private prevToken: Token;
+	private prevToken?: Token;
 	
 	private readonly errors: ParserError[];
 
@@ -92,8 +92,7 @@ export class Parser {
 	constructor(lexer: Lexer) {
 		this.lexer = lexer;
 
-		this.token = dummyToken;
-		this.prevToken = dummyToken;
+		this.token = lexer.lex();
 
 		this.errors = [];
 	}
@@ -112,7 +111,7 @@ export class Parser {
 		this.next();
 		while (this.token.kind !== TokenKind.EOF) {
 			this.statement();
-			if (this.prevToken.kind !== TokenKind.RIGHT_CURLY && this.prevToken.kind !== TokenKind.SEMICOLON) {
+			if (this.prevToken!.kind !== TokenKind.RIGHT_CURLY && this.prevToken!.kind !== TokenKind.SEMICOLON) {
 				this.optionalSemicolon();
 			}
 		} 
@@ -121,7 +120,7 @@ export class Parser {
 	private statements() {
 		while (this.token.kind !== TokenKind.RIGHT_CURLY && this.token.kind !== TokenKind.DEFAULT && this.token.kind !== TokenKind.CASE) {
 			this.statement();
-			if (this.prevToken.kind !== TokenKind.RIGHT_CURLY && this.prevToken.kind !== TokenKind.SEMICOLON) {
+			if (this.prevToken!.kind !== TokenKind.RIGHT_CURLY && this.prevToken!.kind !== TokenKind.SEMICOLON) {
 				this.optionalSemicolon();
 			}
 		}
@@ -307,7 +306,7 @@ export class Parser {
 	}
 
 	private isEndOfStatement(): boolean {
-		return this.prevToken.kind === TokenKind.LINE_FEED ||
+		return this.prevToken!.kind === TokenKind.LINE_FEED ||
 			this.token.kind === TokenKind.EOF ||
 			this.token.kind === TokenKind.RIGHT_CURLY ||
 			this.token.kind === TokenKind.SEMICOLON;

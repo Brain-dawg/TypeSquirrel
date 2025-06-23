@@ -18,13 +18,16 @@ export default async function onSignatureHelpHandler(params: SignatureHelpParams
 	if (!info) {
 		return null;
 	}
-	const { lexer } = info;
+	let lexer = info.globalLexer;
 	
 
 	const position = params.position;
 	const offset = document.offsetAt(position) - 1;
 
 	const result = lexer.findTokenAtPosition(offset);
+	lexer = result.lexer;
+	
+
 	if (result.token && isTokenAComment(result.token)) {
 		return null;
 	}

@@ -15,7 +15,7 @@ import {
 } from 'vscode-languageserver/node';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 
-import { isTokenAComment, Lexer, Parser, Token, TokenIterator, TokenKind } from 'squirrel';
+import { isTokenAComment, isTokenAString, isTokenSkippable, Lexer, Parser, StringToken, Token, TokenIterator, TokenKind } from 'squirrel';
 
 import onHoverHandler from './onHover';
 import { onCompletionHandler, onCompletionResolveHandler } from './onCompletion';
@@ -109,8 +109,8 @@ const documentSettings = new Map<string, Thenable<Settings>>();
 let globalSettings: Settings = defaultSettings;
 
 interface DocumentInfo {
-	lexer: Lexer,
-	parser: Parser
+	globalLexer: Lexer,
+	// parser: Parser
 }
 
 export const documentInfo = new Map<string, DocumentInfo>();
@@ -180,25 +180,58 @@ connection.onRequest('getToken', (params: { uri: string, offset: number }): Toke
 		return null;
 	}
 
-	return info.lexer.findTokenAtPosition(params.offset).token;
+	return info.globalLexer.findTokenAtPosition(params.offset).token;
 }); 
 
+function processLexer(lexer: Lexer) {
+	for (let token = lexer.lex(); token.kind !== TokenKind.EOF; token = lexer.lex()) {
+		// lex
+	}
+
+	const iterator = new TokenIterator(lexer.getTokens());
+	while (iterator.hasNext()) {
+		let token = iterator.next();
+		if (!isTokenAString(token)) {
+			continue;
+		}
+
+		if (token.value.toLowerCase() !== "runscriptcode") {
+			continue;
+		}
+
+		do {
+			token = iterator.next();
+		} while (isTokenSkippable(token));
+
+		if (token.kind === TokenKind.COMMA) {
+			do {
+				token = iterator.next();
+			} while (isTokenSkippable(token));
+		}
+
+		if (isTokenAString(token)) {
+			const code = token as StringToken;
+			code.lexer = new Lexer(code.value, code.sourcePositions);
+
+			processLexer(code.lexer);
+		}
+	}
+}
 
 async function validateTextDocument(document: TextDocument): Promise<Diagnostic[]> {
 	const settings = await getDocumentSettings(document.uri);
 	const text = document.getText();
 	const lexer = new Lexer(text);
 	
-	for (let token = lexer.lex(); token.kind !== TokenKind.EOF; token = lexer.lex()) {
-		// lex
-	}
-	
+	/*
 	const parser = new Parser(lexer);
-	parser.parse();
+	parser.parse();*/
+
+	processLexer(lexer);
 
 	documentInfo.set(document.uri, {
-		lexer,
-		parser
+		globalLexer: lexer,
+		// parser
 	});
 
 	if (!settings.enableDiagnostics) {
@@ -245,7 +278,7 @@ function runParse(document: TextDocument): Diagnostic[] {
 
 	const diagnostics: Diagnostic[] = [];
 
-	const iterator = new TokenIterator(info.lexer.getTokens());
+	const iterator = new TokenIterator(info.globalLexer.getTokens());
 	while (iterator.hasNext()) {
 		const token = iterator.next();
 		if (token.kind !== TokenKind.IDENTIFIER) {
