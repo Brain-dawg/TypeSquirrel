@@ -1,7 +1,7 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, Position, TextDocumentPositionParams, TextEdit } from 'vscode-languageserver';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { documents, getDocumentSettings, documentInfo } from './server';
-import { Token, TokenIterator, TokenKind, globals, StringKind, Lexer } from 'squirrel';
+import { Token, TokenIterator, TokenKind, globals, StringKind, Lexer, isTokenAString, StringToken } from 'squirrel';
 
 function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
 	return {
@@ -38,12 +38,13 @@ const docKindToDocs = new Map<DocKind, globals.Docs>([
 ]);
 
 interface CompletionCache {
-	modifyRange?: Range;
 	searchResult: {
 		token: Token | null;
 		index: number;
 		lexer: Lexer;
 	}
+	modifyRange?: Range;
+	quote?: string;
 }
 
 const completionCache = new Map<string, CompletionCache>();
@@ -73,6 +74,7 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 	const result = lexer.findTokenAtPosition(offset - 1);
 	lexer = result.lexer;
 
+
 	const cache: CompletionCache = {
 		searchResult: result
 	};
@@ -81,12 +83,12 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 
 	const triggerChar = params.context?.triggerCharacter;
 	if (result.token) {
-		const kind = result.token.kind;
-		if (kind === TokenKind.LINE_COMMENT || kind === TokenKind.BLOCK_COMMENT) {
+		const token = result.token;
+		if (token.kind === TokenKind.LINE_COMMENT || token.kind === TokenKind.BLOCK_COMMENT) {
 			return items;
 		}
 
-		if (kind === TokenKind.DOC) {
+		if (token.kind === TokenKind.DOC) {
 			if (triggerChar !== '@') {
 				return items;
 			}
@@ -95,17 +97,22 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 			return items;
 		}
 		
-		if ((kind === TokenKind.STRING || kind === TokenKind.VERBATIM_STRING) && result.token.end !== offset) {
+		if (isTokenAString(token) && token.end !== offset) {
 			if (triggerChar === '@') {
 				return items;
 			}
 
-			const range = convertOffsetsToRange(document, result.token.start + 1, result.token.end - 1);
+			const stringToken = token as StringToken;
+																			// EG   |\\"|
+			const quote = document.getText(convertOffsetsToRange(document, token.start, stringToken.sourcePositions[0]));
+
+			const range = convertOffsetsToRange(document, token.start, token.end);
 			const iterator = new TokenIterator(lexer.getTokens(), result.index - 1);
 
-			if (stringCompletion(document.uri, items, range, iterator)) {
+			if (stringCompletion(document.uri, items, range, quote, iterator)) {
 				cache.modifyRange = range;
-				
+				cache.quote = quote;
+
 				return items;
 			}
 		}
@@ -234,24 +241,27 @@ function addCompletionItems(uri: string, items: CompletionItem[], docKind: DocKi
 	}
 }
 
-function addStringCompletionItems(uri: string, items: CompletionItem[], range: Range, kind: StringKind) {
+function addStringCompletionItems(uri: string, items: CompletionItem[], range: Range, quote: string, kind: StringKind) {
 	const docs = globals.stringCompletions[kind];
-
+	const replacement = quote.length > 1 ? '\\\\' + quote : '\\' + quote;
+	
 	for (const item of docs) {
+		const escaped = item.replaceAll('"', replacement);
+		const text = quote + escaped + quote;
 		items.push({
 			label: item,
+			filterText: text,
 			kind: CompletionItemKind.Value,
+			textEdit: TextEdit.replace(range, text),
 			data: {
 				uri,
 				kind
 			},
-			textEdit: TextEdit.replace(range, item)
 		});
 	}
 }
 
-function stringCompletion(uri: string, items: CompletionItem[], range: Range, iterator: TokenIterator): boolean {
-	
+function stringCompletion(uri: string, items: CompletionItem[], range: Range, quote: string, iterator: TokenIterator): boolean {
 	if (!iterator.hasPrevious()) {
 		return false;
 	}
@@ -272,7 +282,7 @@ function stringCompletion(uri: string, items: CompletionItem[], range: Range, it
 			return false;
 		}
 
-		addStringCompletionItems(uri, items, range, stringKind);
+		addStringCompletionItems(uri, items, range, quote, stringKind);
 		return true;
 	}
 
@@ -288,7 +298,7 @@ function stringCompletion(uri: string, items: CompletionItem[], range: Range, it
 		return true;
 	}
 
-	addStringCompletionItems(uri, items, range, stringKind);
+	addStringCompletionItems(uri, items, range, quote, stringKind);
 	return true;
 }
 
@@ -474,45 +484,21 @@ export async function onCompletionResolveHandler(item: CompletionItem): Promise<
 	}
 
 	if (item.kind === CompletionItemKind.Value) {
-		let replaced = false;
-		let text = item.label.replace(/"/g, () => {
-			replaced = true;
-			return '\\"';
-		});
-
 		if (!StringKind[item.data.kind].endsWith("PROPERTY")) {
-			item.command = {
-				command: 'cursorMove',
-				title: 'Move Cursor',
-				arguments: [{ to: 'right', by: 'character', value: 1 }]
-			};
-
-			if (replaced) {
-				item.textEdit = TextEdit.replace(completionCache.get(item.data.uri)!.modifyRange!, text);
-			}
-
 			return item;
 		}
 		
-		let snippet_id = 0;
-		text = text.replace(/\d+/g, (match) => {
-			replaced = true;
+		let snippet_id = 1;
+		let text = item.textEdit!.newText.replace(/\d+/g, (match) => {
 			return `\${${snippet_id++}:${match}}`;
 		});
-		if (snippet_id !== 0) {
-			item.insertTextFormat = InsertTextFormat.Snippet;
-		} else {
-			item.command = {
-				command: 'cursorMove',
-				title: 'Move Cursor',
-				arguments: [{ to: 'right', by: 'character', value: 1 }]
-			};
-		}
 
-		if (replaced) {
-			item.textEdit = TextEdit.replace(completionCache.get(item.data.uri)!.modifyRange!, text);
+		if (snippet_id === 1) {
+			return item;
 		}
 		
+		item.insertTextFormat = InsertTextFormat.Snippet;
+		item.textEdit!.newText = text + "$0";
 		return item;
 	}
 
