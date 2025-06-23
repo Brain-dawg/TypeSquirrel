@@ -44,7 +44,6 @@ interface CompletionCache {
 		lexer: Lexer;
 	}
 	modifyRange?: Range;
-	quote?: string;
 }
 
 const completionCache = new Map<string, CompletionCache>();
@@ -111,7 +110,6 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 
 			if (stringCompletion(document.uri, items, range, quote, iterator)) {
 				cache.modifyRange = range;
-				cache.quote = quote;
 
 				return items;
 			}
