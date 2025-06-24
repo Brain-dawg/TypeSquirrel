@@ -523,6 +523,12 @@ export class Lexer {
 		
 		do {
 			this.next();
+			const charCode = this.charCode();
+			if (charCode === CharCode.BACKTICK) {
+				value += '"';
+				sourcePositions.push(this.getSourcePosition());
+				continue;
+			}
 			if (this.charCode() === opening) {
 				this.next();
 				if (this.charCode() !== opening) {
