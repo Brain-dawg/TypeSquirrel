@@ -120,14 +120,6 @@
 				}
 			]
 		},
-		"verbatim-string-escape-sequences": {
-			"patterns": [
-				{
-					"name": "constant.character.escape.squirrel",
-					"match": "\""
-				}
-			]
-		},
 		"format-specifiers": {
 			"patterns": [
 				{
@@ -295,8 +287,9 @@
 							"include": "#comments"
 						},
 						{
-							"name": "constant.character.escape.squirrel",
-							"match": "\"\""
+							"name": "string.quoted.double",
+							"begin": "\"\"",
+							"end": "\"\""
 						},
 						{
 							"include": "#format-specifiers"
@@ -386,8 +379,9 @@
 							"include": "#comments"
 						},
 						{
-							"name": "constant.character.escape.squirrel",
-							"match": "\"\""
+							"name": "string.quoted.double",
+							"begin": "\"\"",
+							"end": "\"\""
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -504,8 +498,9 @@
 							"include": "#comments"
 						},
 						{
-							"name": "constant.character.escape.squirrel",
-							"match": "\\\\\"\\\\\""
+							"name": "string.quoted.double",
+							"begin": "\\\\\"{2}",
+							"end": "\\\\\"{2}"
 						},
 						{
 							"include": "#format-specifiers"
@@ -595,8 +590,9 @@
 							"include": "#comments"
 						},
 						{
-							"name": "constant.character.escape.squirrel",
-							"match": "\\\\\"\\\\\""
+							"name": "string.quoted.double",
+							"begin": "\\\\\"{2}",
+							"end": "\\\\\"{2}"
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -649,7 +645,7 @@
 					"patterns": [
 						{
 							"name": "constant.character.escape.squirrel",
-							"match": "\\\\\"\\\\\""
+							"match": "\\\\\"{2}"
 						},
 						{
 							"include": "#format-specifiers"
@@ -709,8 +705,9 @@
 							"include": "#comments"
 						},
 						{
-							"name": "constant.character.escape.squirrel",
-							"match": "``"
+							"name": "string.quoted.double",
+							"begin": "``",
+							"end": "``"
 						},
 						{
 							"include": "#format-specifiers"
@@ -800,8 +797,9 @@
 							"include": "#comments"
 						},
 						{
-							"name": "constant.character.escape.squirrel",
-							"match": "``"
+							"name": "string.quoted.double",
+							"begin": "``",
+							"end": "``"
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -1211,6 +1209,10 @@
 				{
 					"match": "\\[|\\]",
 					"name": "meta.brace.square.squirrel"
+				},
+				{
+					"match": "</|/>",
+					"name": "entity.name.type.squirrel"
 				}
 			]
 		},
