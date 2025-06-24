@@ -183,7 +183,7 @@ connection.onRequest('getToken', (params: { uri: string, offset: number }): Toke
 	return info.globalLexer.findTokenAtPosition(params.offset).token;
 }); 
 
-function processLexer(lexer: Lexer) {
+function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagnostic[]) {
 	for (let token = lexer.lex(); token.kind !== TokenKind.EOF; token = lexer.lex()) {
 		// lex
 	}
@@ -213,8 +213,26 @@ function processLexer(lexer: Lexer) {
 			const code = token as StringToken;
 			code.lexer = new Lexer(code.value, code.sourcePositions);
 
-			processLexer(code.lexer);
+			processLexer(document, code.lexer, diagnostics);
 		}
+	}
+
+	if (diagnostics === undefined) {
+		return;
+	}
+
+	runParse(document, lexer, diagnostics);
+
+	for (const error of lexer.getErrors()) {
+		diagnostics.push({
+			range: {
+				// Conversion from 0 based offset
+				start: document.positionAt(error.start),
+				end: document.positionAt(error.end)
+			},
+			message: error.message,
+			source: "lexer"
+		});
 	}
 }
 
@@ -227,32 +245,19 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	const parser = new Parser(lexer);
 	parser.parse();*/
 
-	processLexer(lexer);
-
 	documentInfo.set(document.uri, {
 		globalLexer: lexer,
 		// parser
 	});
 
 	if (!settings.enableDiagnostics) {
+		processLexer(document, lexer);
+
 		return [];
 	}
 
 	const diagnostics: Diagnostic[] = [];
-
-	diagnostics.push(...runParse(document));
-	
-	for (const error of lexer.getErrors()) {
-		diagnostics.push({
-			range: {
-				// Conversion from 0 based offset
-				start: document.positionAt(error.start),
-				end: document.positionAt(error.end)
-			},
-			message: error.message,
-			source: "lexer"
-		});
-	}
+	processLexer(document, lexer, diagnostics);
 
 	/*
 	for (const error of parser.getErrors()) {
@@ -270,15 +275,8 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	return diagnostics;
 }
 
-function runParse(document: TextDocument): Diagnostic[] {
-	const info = documentInfo.get(document.uri);
-	if (!info) {
-		return [];
-	}
-
-	const diagnostics: Diagnostic[] = [];
-
-	const iterator = new TokenIterator(info.globalLexer.getTokens());
+function runParse(document: TextDocument, lexer: Lexer, diagnostics: Diagnostic[]): void {
+	const iterator = new TokenIterator(lexer.getTokens());
 	while (iterator.hasNext()) {
 		const token = iterator.next();
 		if (token.kind !== TokenKind.IDENTIFIER) {
@@ -345,8 +343,6 @@ function runParse(document: TextDocument): Diagnostic[] {
 			source: 'parser'
 		});
 	}
-
-	return diagnostics;
 }
 
 function getParamCount(signature: string): { minParamCount: number, maxParamCount: number } {
