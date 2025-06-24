@@ -514,18 +514,19 @@ export class Lexer {
 	}
 
 	public lexVerbatimString(): StringToken {
-		const start = this.getSourcePosition(-1);
+		const start = this.getSourcePosition(-2);
 		const opening = this.charCode();
 		const kind = TokenKind.VERBATIM_STRING;
-		const sourcePositions: number[] = [];
+		const sourcePositions: number[] = [this.getSourcePosition()];
 
 		let value = "";
+		
 		do {
 			this.next();
 			if (this.charCode() === opening) {
 				this.next();
 				if (this.charCode() !== opening) {
-					const end = this.getSourcePosition(-1);
+					const end = this.getSourcePosition();
 					return { kind, value, start, end, sourcePositions };
 				}
 			}
@@ -540,24 +541,26 @@ export class Lexer {
 	}
 
 	public processHexEscape(maxDigits: number): string {
+		const textStart = this.cursor;
 		this.next();
 		const charCode = this.charCode();
 		if (!CharCode.isHexadecimal(charCode)) {
 			this.errors.push({ message: "Hexadecimal number expected.", start: this.getSourcePosition(-1), end: this.getSourcePosition() });
 			return "";
 		}
-		let number = charCode;
 		for (let i = 1; i < maxDigits; i++) {
 			this.next();
 			const charCode = this.charCode();
 			if (!CharCode.isHexadecimal(charCode)) {
-				return String.fromCharCode(number);
-			}
-			number += charCode;
-		}
+				const textEnd = this.cursor - 1;
 
+				return String.fromCharCode(parseInt(this.text.slice(textStart, textEnd), 16));
+			}
+		}
+		
+		const textEnd = this.cursor;
 		this.next();
-		return String.fromCharCode(number);
+		return String.fromCharCode(parseInt(this.text.slice(textStart, textEnd), 16));
 	}
 
 	public lexString(): StringToken | Token {
@@ -583,14 +586,17 @@ export class Lexer {
 				this.next();
 				switch (this.charCode()) {
 				case CharCode.x:
-					value += this.processHexEscape(2);
-					break;
+					value += this.processHexEscape(2);	
+					sourcePositions.push(this.getSourcePosition(-1));
+					continue;
 				case CharCode.u:
 					value += this.processHexEscape(4);
-					break;
+					sourcePositions.push(this.getSourcePosition(-1));
+					continue;
 				case CharCode.U:
 					value += this.processHexEscape(8);
-					break;
+					sourcePositions.push(this.getSourcePosition(-1));
+					continue;
 				case CharCode.t:
 					value += '\t';
 					break;
