@@ -41,6 +41,46 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "squirrel",
+        "aliases": [
+          "Squirrel",
+          "nut"
+        ],
+        "extensions": [
+          ".nut"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./assets/nut_icon.png",
+          "dark": "./assets/nut_icon.png"
+        }
+      },
+      {
+        "id": "squirrelDoc",
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "squirrel",
+        "scopeName": "source.squirrel",
+        "path": "./syntaxes/squirrel.tmLanguage.json"
+      },
+      {
+        "scopeName": "documentation.injection.squirrel",
+        "path": "./syntaxes/squirrelDoc.injection.tmLanguage.json",
+        "injectTo": [
+          "source.squirrel"
+        ]
+      },
+      {
+        "language": "squirrelDoc",
+        "scopeName": "source.squirrelDoc",
+        "path": "./syntaxes/squirrelDoc.tmLanguage.json"
+      }
+    ],
     "snippets": [
       {
         "language": "squirrel",
@@ -77,47 +117,7 @@
           "description": "Enable hover documentation"
         }
       }
-    },
-    "languages": [
-      {
-        "id": "squirrel",
-        "aliases": [
-          "Squirrel",
-          "nut"
-        ],
-        "extensions": [
-          ".nut"
-        ],
-        "configuration": "./language-configuration.json",
-        "icon": {
-          "light": "./assets/nut_icon.png",
-          "dark": "./assets/nut_icon.png"
-        }
-      },
-      {
-        "id": "squirrelDoc",
-        "configuration": "./language-configuration.json"
-      }
-    ],
-    "grammars": [
-      {
-        "language": "squirrel",
-        "scopeName": "source.squirrel",
-        "path": "./syntaxes/squirrel.tmLanguage.json"
-      },
-      {
-        "scopeName": "documentation.injection.squirrel",
-        "path": "./syntaxes/squirrelDoc.injection.tmLanguage.json",
-        "injectTo": [
-          "source.nut"
-        ]
-      },
-      {
-        "language": "squirrelDoc",
-        "scopeName": "source.squirrelDoc",
-        "path": "./syntaxes/squirrelDoc.tmLanguage.json"
-      }
-    ]
+    }
   },
   "dependencies": {
     "concurrently": "^9.1.2"
