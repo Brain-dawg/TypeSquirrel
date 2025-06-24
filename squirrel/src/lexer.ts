@@ -524,17 +524,17 @@ export class Lexer {
 		do {
 			this.next();
 			const charCode = this.charCode();
-			if (charCode === CharCode.BACKTICK) {
-				value += '"';
-				sourcePositions.push(this.getSourcePosition());
-				continue;
-			}
-			if (this.charCode() === opening) {
+			if (charCode === opening) {
 				this.next();
 				if (this.charCode() !== opening) {
 					const end = this.getSourcePosition();
 					return { kind, value, start, end, sourcePositions };
 				}
+			}
+			if (charCode === CharCode.BACKTICK) {
+				value += '"';
+				sourcePositions.push(this.getSourcePosition());
+				continue;
 			}
 			value += this.current;
 			sourcePositions.push(this.getSourcePosition());
@@ -582,6 +582,25 @@ export class Lexer {
 			const charCode = this.charCode();
 
 			switch (charCode) {
+			case opening:
+				const end = this.getSourcePosition();
+				if (kind === TokenKind.STRING) {
+					this.next();
+					return { kind, value, start, end, sourcePositions };
+				}
+
+				if (value.length === 0) {
+					this.errors.push({ message: "Character literal should contain a character.", start, end: this.getSourcePosition() });
+					this.next();
+					return { kind, value: '0', start, end };
+				}
+
+				if (value.length > 1) {
+					this.errors.push({ message: "Character literal can only contain a single character.", start, end: this.getSourcePosition() });
+				}
+
+				this.next();
+				return { kind, value: value.charCodeAt(0).toString(), start, end };
 			case CharCode.LINE_FEED:
 				this.errors.push({ message: `Multiline in a ${kind === TokenKind.STRING ? "string" : "character"} literal.`, start: this.getSourcePosition(-1), end: this.getSourcePosition(-1) });
 				break;
@@ -646,25 +665,6 @@ export class Lexer {
 					this.errors.push({ message: "Unrecognised escape character.", start: this.getSourcePosition(-2), end: this.getSourcePosition() });
 				}
 				break;
-			case opening:
-				const end = this.getSourcePosition();
-				if (kind === TokenKind.STRING) {
-					this.next();
-					return { kind, value, start, end, sourcePositions };
-				}
-
-				if (value.length === 0) {
-					this.errors.push({ message: "Character literal should contain a character.", start, end: this.getSourcePosition() });
-					this.next();
-					return { kind, value: '0', start, end };
-				}
-
-				if (value.length > 1) {
-					this.errors.push({ message: "Character literal can only contain a single character.", start, end: this.getSourcePosition() });
-				}
-
-				this.next();
-				return { kind, value: value.charCodeAt(0).toString(), start, end };
 			default:
 				value += this.current;
 				break;
