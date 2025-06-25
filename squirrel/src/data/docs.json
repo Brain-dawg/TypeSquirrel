@@ -117,7 +117,7 @@
       "desc": "Get a vector containing min bounds, centered on object, taking the object's orientation into account."
     },
     "GetCenter": {
-      "detail": "CBaseEntity/CTFNavArea.GetCenter() -> Vector",
+      "detail": "CBaseEntity | CTFNavArea.GetCenter() -> Vector",
       "desc": "Gets center point of the entity in world coordinates / Get center origin of area."
     },
     "GetClassname": {
@@ -185,7 +185,7 @@
       "detail": "CBaseEntity.GetMoveType() -> int"
     },
     "GetName": {
-      "detail": "CBaseEntity/CBaseCombatWeapon.GetName() -> string",
+      "detail": "CBaseEntity | CBaseCombatWeapon.GetName() -> string",
       "desc": "Get entity's targetname/Gets the weapon's internal name."
     },
     "GetOrigin": {
@@ -2008,15 +2008,15 @@
       "desc": "Return true if we haven't moved in awhile."
     },
     "ComputeUpdateInterval": {
-      "detail": "INextBotComponent/ILocomotion.ComputeUpdateInterval() -> bool",
+      "detail": "INextBotComponent | ILocomotion.ComputeUpdateInterval() -> bool",
       "desc": "Recomputes the component update interval."
     },
     "GetUpdateInterval": {
-      "detail": "INextBotComponent/ILocomotion.GetUpdateInterval() -> float",
+      "detail": "INextBotComponent | ILocomotion.GetUpdateInterval() -> float",
       "desc": "Returns the component update interval."
     },
     "Reset": {
-      "detail": "INextBotComponent/ILocomotion.Reset() -> null",
+      "detail": "INextBotComponent | ILocomotion.Reset() -> null",
       "desc": "Resets the internal update state"
     },
     "Approach": {
@@ -2262,7 +2262,7 @@
       "desc": "Returns the square of the magnitude of the vector on the x-y plane."
     },
     "Norm": {
-      "detail": "Vector/Quaternion.Norm() -> float",
+      "detail": "Vector | Quaternion.Norm() -> float",
       "desc": "Normalizes the vector/quaternion in place and returns it's length."
     },
     "Scale": {
@@ -2270,7 +2270,7 @@
       "desc": "Scales the vector magnitude."
     },
     "ToKVString": {
-      "detail": "Vector/QAngle/Quaternion.ToKVString() -> string",
+      "detail": "Vector | QAngle | Quaternion.ToKVString() -> string",
       "desc": "Returns a string without separations commas."
     },
     "Forward": {
@@ -2317,11 +2317,11 @@
       "desc": "Looks for the sub-string passed as its first parameter, starting at either the beginning of the string or at a specific character index if one is provided as a second parameter. If the sub-string is found, returns the index at which it first occurs, otherwise returns null."
     },
     "len": {
-      "detail": "string/array/table.len() -> int",
+      "detail": "string | array | table.len() -> int",
       "desc": "Returns a string's/array's/table's length."
     },
     "slice": {
-      "detail": "string/array.slice(start_index: int, end_index: int = null) -> null",
+      "detail": "string | array.slice(start_index: int, end_index: int = null) -> null",
       "desc": "Returns a section of the string/array as new string/array. Copies from start to the end (not included). If start is negative the index is calculated as length + start, if end is negative the index is calculated as length + end. If end is omitted end is equal to the string/array length."
     },
     "tolower": {
@@ -2341,7 +2341,7 @@
       "desc": "Applies a function to all of an array's items."
     },
     "clear": {
-      "detail": "table/array.clear() -> null",
+      "detail": "table | array.clear() -> null",
       "desc": "Removes all of the items from an array/table."
     },
     "extend": {
@@ -2401,15 +2401,15 @@
       "desc": "This method deletes the target slot without employing delegation. If the table lacks the target slot, the methods returns null, otherwise it returns the value associated with that slot."
     },
     "rawget": {
-      "detail": "table/class/handle.rawget(key: any) -> any",
+      "detail": "table | class | handle.rawget(key: any) -> any",
       "desc": "Retrieves the value of the specified key without employing delegation."
     },
     "rawin": {
-      "detail": "table/class/handle.rawin(key: any) -> bool",
+      "detail": "table | class | handle.rawin(key: any) -> bool",
       "desc": "Checks for the presence of the specified key in the table/class/handle without employing delegation."
     },
     "rawset": {
-      "detail": "table/class/handle.rawset(key: any, value: any) -> any",
+      "detail": "table | class | handle.rawset(key: any, value: any) -> any",
       "desc": "Sets the value of the specified key without employing delegation."
     },
     "setdelegate": {
@@ -2429,15 +2429,15 @@
       "desc": "Calls the target function and passes array values into its parameters."
     },
     "bindenv": {
-      "detail": "function.bindenv(scope: table/handle) -> function",
+      "detail": "function.bindenv(scope: table | handle) -> function",
       "desc": "Clones the target function and binds it to a specified context object."
     },
     "call": {
-      "detail": "function.call(scope: table/handle, ...args: any) -> any",
+      "detail": "function.call(scope: table | handle, ...args: any) -> any",
       "desc": "Calls the function with a non-default context object."
     },
     "pcall": {
-      "detail": "function.pcall(scope: table/handle, ...args: any) -> any",
+      "detail": "function.pcall(scope: table | handle, ...args: any) -> any",
       "desc": "Calls the function with a non-default context object, bypassing Squirrel error callbacks."
     },
     "pacall": {
@@ -2485,19 +2485,19 @@
       "desc": "Returns a weak reference to the object."
     },
     "tofloat": {
-      "detail": "int/bool/float/string.tofloat() -> float",
+      "detail": "int | bool | float | string.tofloat() -> float",
       "desc": "Returns float value represented by the integer/bool/float/string. For string it must only contain numeric characters and/or plus and minus symbols. An exception is thrown otherwise."
     },
     "tointeger": {
-      "detail": "int/bool/float/string.tointeger(base: int = 10) -> int",
+      "detail": "int | bool | float | string.tointeger(base: int = 10) -> int",
       "desc": "Returns integer value represented by the integer/bool/float/string. For string it must only contain numeric characters. An exception is thrown otherwise. Hexadecimal notation is supported (i.e. 0xFF). If a hexadecimal string contains more than 10 characters, including the 0x, returns -1."
     },
     "tochar": {
-      "detail": "int/float.tochar() -> int",
+      "detail": "int | float.tochar() -> int",
       "desc": "Returns a string containing a single character represented by the integer/integer part of the float."
     },
     "tostring": {
-      "detail": "int/bool/float/string/handle.tostring() -> string",
+      "detail": "int | bool | float | string | handle.tostring() -> string",
       "desc": "Returns a string representation of the corresponding data type. For handles/tables the default return behaviour can be redefined by using _tostring metamethod in the handle's class / table's delegate."
     },
     "ref": {
@@ -2605,7 +2605,7 @@
       "1": "INPUT"
     },
     "DoIncludeScript": {
-      "detail": "DoIncludeScript(file: string, handle/scope: table) -> bool",
+      "detail": "DoIncludeScript(file: string, scope: table | handle) -> bool",
       "desc": "Execute a script and put all its content for the argument passed to the `scope` parameter. The file must have the `.nut` extension."
     },
     "IncludeScript": {
