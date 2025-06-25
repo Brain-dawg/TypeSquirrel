@@ -403,7 +403,7 @@ const noSpaceKeywords = new Set<string>([
 	"continue",
 	"default",
 	"false",
-	"false",
+	"function",
 	"return",
 	"this",
 	"true",
