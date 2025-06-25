@@ -1,5 +1,13 @@
-import { Token, TokenKind } from 'squirrel';
+import { StringToken, Token, TokenKind } from 'squirrel';
 import { Position, Range, Selection, TextDocument, window } from 'vscode';
+
+function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
+	return new Range(document.positionAt(start), document.positionAt(end));
+}
+
+function getQuote(document: TextDocument, token: StringToken): string {
+	return document.getText(convertOffsetsToRange(document, token.start, token.sourcePositions[0]));
+}
 
 export default async function onEnterHandler(document: TextDocument, offset: number, indent: string, token: Token) {
 	const editor = window.activeTextEditor;
@@ -19,9 +27,11 @@ export default async function onEnterHandler(document: TextDocument, offset: num
 			return;
 		}
 
+		const quote = getQuote(document, token as StringToken);
+
 		await editor.edit(editBuilder => {
-			editBuilder.insert(previousPosition, '" +');
-			editBuilder.insert(currentPosition, '"');
+			editBuilder.insert(previousPosition, quote + ' +');
+			editBuilder.insert(currentPosition, quote);
 		});
 		
 		return;
