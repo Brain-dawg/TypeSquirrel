@@ -3,13 +3,6 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { documents, getDocumentSettings, documentInfo } from './server';
 import { Token, TokenIterator, TokenKind, globals, StringKind, Lexer, isTokenAString, StringToken } from 'squirrel';
 
-function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
-	return {
-		start: document.positionAt(start),
-		end: document.positionAt(end)
-	};
-}
-
 const enum DocKind {
 	Keywords,
 	Methods,
@@ -36,6 +29,18 @@ const docKindToDocs = new Map<DocKind, globals.Docs>([
 	[DocKind.InstancesVariables, globals.otherVariables],
 	[DocKind.DocSnippets, globals.docSnippets]
 ]);
+
+function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
+	return {
+		start: document.positionAt(start),
+		end: document.positionAt(end)
+	};
+}
+
+function getQuote(document: TextDocument, token: StringToken): string {
+															  // EG   |\\"|
+	return document.getText(convertOffsetsToRange(document, token.start, token.sourcePositions[0]));
+}
 
 interface CompletionCache {
 	searchResult: {
@@ -101,10 +106,8 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 				return items;
 			}
 
-			const stringToken = token as StringToken;
-																			// EG   |\\"|
-			const quote = document.getText(convertOffsetsToRange(document, token.start, stringToken.sourcePositions[0]));
-
+																		
+			const quote = getQuote(document, token as StringToken); 
 			const range = convertOffsetsToRange(document, token.start, token.end);
 			const iterator = new TokenIterator(lexer.getTokens(), result.index - 1);
 
