@@ -569,6 +569,7 @@ export class Lexer {
 		return String.fromCharCode(parseInt(this.text.slice(textStart, textEnd), 16));
 	}
 
+
 	public lexString(): StringToken | Token {
 		const start = this.getSourcePosition(-1);
 		const opening = this.charCode();
@@ -579,7 +580,7 @@ export class Lexer {
 		
 		this.next();
 		while (!this.readEOF) {
-			const charCode = this.charCode();
+			let charCode = this.charCode();
 
 			switch (charCode) {
 			case opening:
@@ -609,18 +610,20 @@ export class Lexer {
 				break;
 			case CharCode.BACKSLASH:
 				this.next();
-				switch (this.charCode()) {
+				charCode = this.charCode();
+				switch (charCode) {
 				case CharCode.x:
 					value += this.processHexEscape(2);	
 					sourcePositions.push(this.getSourcePosition(-1));
 					continue;
 				case CharCode.u:
-					value += this.processHexEscape(4);
-					sourcePositions.push(this.getSourcePosition(-1));
-					continue;
 				case CharCode.U:
-					value += this.processHexEscape(8);
+					const escape = this.processHexEscape(charCode === CharCode.u ? 4 : 8);
 					sourcePositions.push(this.getSourcePosition(-1));
+					if (kind === TokenKind.INTEGER && escape.charCodeAt(0) > 0x7F) {
+						this.errors.push({ message: "Unicode characters take multiple bytes to store.", start, end: this.getSourcePosition() });
+					}
+					value += escape;
 					continue;
 				case CharCode.t:
 					value += '\t';
