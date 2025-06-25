@@ -7344,8 +7344,8 @@
     },
     "Math": {
       "Zero": {
-        "detail": "Zero: int",
-        "desc": "Value: `0`"
+        "detail": "Zero: float",
+        "desc": "Value: `0.0`"
       },
       "Epsilon": {
         "detail": "Epsilon: float",
@@ -7356,8 +7356,8 @@
         "desc": "Value: `1.61803`"
       },
       "One": {
-        "detail": "One: int",
-        "desc": "Value: `1`"
+        "detail": "One: float",
+        "desc": "Value: `1.0`"
       },
       "Sqrt2": {
         "detail": "Sqrt2: float",
@@ -7376,7 +7376,7 @@
         "desc": "Value: `3.14159`"
       },
       "Tau": {
-        "detail": "Tau: int",
+        "detail": "Tau: float",
         "desc": "Value: `6.28319`"
       }
     },
