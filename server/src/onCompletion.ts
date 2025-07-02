@@ -1,7 +1,7 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, Position, TextDocumentPositionParams, TextEdit } from 'vscode-languageserver';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { documents, getDocumentSettings, documentInfo } from './server';
-import { Token, TokenIterator, TokenKind, globals, StringKind, Lexer, isTokenAString, StringToken } from 'squirrel';
+import { Token, TokenIterator, SyntaxKind, globals, Docs, StringKind, Lexer, isTokenAString, StringToken } from 'squirrel';
 
 const enum DocKind {
 	Keywords,
@@ -17,7 +17,7 @@ const enum DocKind {
 	DocSnippets
 }
 
-const docKindToDocs = new Map<DocKind, globals.Docs>([
+const docKindToDocs = new Map<DocKind, Docs>([
 	[DocKind.Methods, globals.methods],
 	[DocKind.DeprecatedMethods, globals.deprecatedMethods],
 	[DocKind.Functions, globals.functions],
@@ -88,11 +88,11 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 	const triggerChar = params.context?.triggerCharacter;
 	if (result.token) {
 		const token = result.token;
-		if (token.kind === TokenKind.LINE_COMMENT || token.kind === TokenKind.BLOCK_COMMENT) {
+		if (token.kind === SyntaxKind.LineComment || token.kind === SyntaxKind.BlockComment) {
 			return items;
 		}
 
-		if (token.kind === TokenKind.DOC) {
+		if (token.kind === SyntaxKind.DocComment) {
 			if (triggerChar !== '@') {
 				return items;
 			}
@@ -126,18 +126,20 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 	const iterator = new TokenIterator(lexer.getTokens(), result.index);
 
 	const kind = declarationKind(iterator);
-	if (kind === TokenKind.LOCAL) {
+	if (kind === SyntaxKind.LocalKeyword) {
 		return [{
 			label: "function",
 			kind: CompletionItemKind.Keyword,
 			data: { uri: document.uri }
 		}];
-	} else if (kind === TokenKind.FUNCTION) {
-		return [{
+	} else if (kind === SyntaxKind.FunctionKeyword) {
+		addCompletionItems(document.uri, items, DocKind.Events, CompletionItemKind.Event);
+		items.push({
 			label: "constructor",
 			kind: CompletionItemKind.Keyword,
 			data: { uri: document.uri }
-		}];
+		});
+		return items;
 	} else if (kind) {
 		return items;
 	}
@@ -173,7 +175,7 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 		// Or we've possibly done table/class accessing with []
 
 		const lastToken = iterator.next();
-		if (!lastToken || lastToken.kind !== TokenKind.RIGHT_ROUND && lastToken.kind !== TokenKind.RIGHT_SQUARE) {
+		if (!lastToken || lastToken.kind !== SyntaxKind.CloseRoundToken && lastToken.kind !== SyntaxKind.RightSquareToken) {
 			addCompletionItems(document.uri, items, DocKind.InstancesMethods, CompletionItemKind.Method);
 			addCompletionItems(document.uri, items, DocKind.InstancesVariables, CompletionItemKind.EnumMember);
 			cache.modifyRange = convertOffsetsToRange(document, dotRange.start, dotRange.end);
@@ -216,7 +218,7 @@ function addPlainCompletionItems(uri: string, items: CompletionItem[], completio
 	}
 }
 
-function addCompletionItems(uri: string, items: CompletionItem[], docKind: DocKind, completionItemKind: CompletionItemKind, docs?: globals.Docs): void {
+function addCompletionItems(uri: string, items: CompletionItem[], docKind: DocKind, completionItemKind: CompletionItemKind, docs?: Docs): void {
 	if (!docs) {
 		docs = docKindToDocs.get(docKind);
 		if (!docs) {
@@ -268,8 +270,8 @@ function stringCompletion(uri: string, items: CompletionItem[], range: Range, qu
 	}
 
 	const token = iterator.previous();
-	if (token.kind !== TokenKind.COMMA) {
-		if (token.kind !== TokenKind.LEFT_ROUND) {
+	if (token.kind !== SyntaxKind.CommaToken) {
+		if (token.kind !== SyntaxKind.OpenRoundToken) {
 			return false;
 		}
 
@@ -303,23 +305,23 @@ function stringCompletion(uri: string, items: CompletionItem[], range: Range, qu
 	return true;
 }
 
-function declarationKind(iterator: TokenIterator): TokenKind | null {
+function declarationKind(iterator: TokenIterator): SyntaxKind | null {
 	if (!iterator.hasPrevious()) {
 		return null;
 	}
 
 	let token = iterator.previous();
-	if (token.kind === TokenKind.LOCAL || token.kind === TokenKind.CONST || token.kind === TokenKind.FUNCTION) {
+	if (token.kind === SyntaxKind.LocalKeyword || token.kind === SyntaxKind.ConstKeyword || token.kind === SyntaxKind.FunctionKeyword) {
 		return token.kind;
 	}
 	
-	if (token.kind !== TokenKind.IDENTIFIER || !iterator.hasPrevious()) {
+	if (token.kind !== SyntaxKind.IdentifierToken || !iterator.hasPrevious()) {
 		return null;
 	}
 
 	token = iterator.previous();
 
-	if (token.kind === TokenKind.LOCAL || token.kind === TokenKind.CONST || token.kind === TokenKind.FUNCTION) {
+	if (token.kind === SyntaxKind.LocalKeyword || token.kind === SyntaxKind.ConstKeyword || token.kind === SyntaxKind.FunctionKeyword) {
 		return token.kind;
 	}
 
@@ -333,25 +335,25 @@ function readParamCount(iterator: TokenIterator): number {
 	while (iterator.hasPrevious()) {
 		const token = iterator.previous();
 		switch (token.kind) {
-		case TokenKind.RIGHT_ROUND:
-		case TokenKind.RIGHT_CURLY:
-		case TokenKind.RIGHT_SQUARE:
+		case SyntaxKind.CloseRoundToken:
+		case SyntaxKind.CloseCurlyToken:
+		case SyntaxKind.RightSquareToken:
 			depth++;
 			break;
-		case TokenKind.LEFT_CURLY:
-		case TokenKind.LEFT_SQUARE:
+		case SyntaxKind.OpenCurlyToken:
+		case SyntaxKind.OpenSquareToken:
 			depth--;
 			if (depth === 0) {
 				return -1;
 			}
 			break;
-		case TokenKind.LEFT_ROUND:
+		case SyntaxKind.OpenRoundToken:
 			depth--;
 			if (depth === 0) {
 				return paramCount;
 			}
 			break;
-		case TokenKind.COMMA:
+		case SyntaxKind.CommaToken:
 			if (depth === 1) {
 				paramCount++;
 			}
@@ -368,10 +370,10 @@ function getDotRange(iterator: TokenIterator, offset: number): { start: number, 
 	}
 
 	let token = iterator.previous();
-	if (token.kind === TokenKind.DOT) {
+	if (token.kind === SyntaxKind.DotToken) {
 		return { start: token.start, end: offset };
 	}
-	if (token.kind !== TokenKind.IDENTIFIER) {
+	if (token.kind !== SyntaxKind.IdentifierToken) {
 		return null;
 	}
 
@@ -381,7 +383,7 @@ function getDotRange(iterator: TokenIterator, offset: number): { start: number, 
 
 	const end = token.start;
 	token = iterator.previous();
-	if (token.kind === TokenKind.DOT) {
+	if (token.kind === SyntaxKind.DotToken) {
 		return { start: token.start, end };
 	}
 
@@ -436,7 +438,7 @@ function functionParanthesis(document: TextDocument): boolean {
 
 	let token = iterator.previous();
 
-	if (token.kind === TokenKind.IDENTIFIER || token.kind === TokenKind.FUNCTION) {
+	if (token.kind === SyntaxKind.IdentifierToken || token.kind === SyntaxKind.FunctionKeyword) {
 		if (!iterator.hasPrevious()) {
 			return false;
 		}
@@ -444,7 +446,7 @@ function functionParanthesis(document: TextDocument): boolean {
 		token = iterator.previous();
 	}
 
-	if (token.kind === TokenKind.LOCAL) {
+	if (token.kind === SyntaxKind.LocalKeyword) {
 		if (!iterator.hasPrevious()) {
 			return false;
 		}
@@ -452,7 +454,7 @@ function functionParanthesis(document: TextDocument): boolean {
 		token = iterator.previous();
 	}
 
-	if (token.kind === TokenKind.SEMICOLON || token.kind === TokenKind.LINE_FEED) {
+	if (token.kind === SyntaxKind.SemicolonToken || token.kind === SyntaxKind.LineFeedToken) {
 		return false;
 	}
 
@@ -472,6 +474,12 @@ export async function onCompletionResolveHandler(item: CompletionItem): Promise<
 		}
 		
 		if (item.label === "function" && !functionParanthesis(document)) {
+			item.insertText += " ";
+			item.command = {
+				title: "Trigger Suggest",
+    			command: "editor.action.triggerSuggest"
+			};
+
 			return item;
 		}
 
