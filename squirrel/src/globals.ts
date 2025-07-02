@@ -1,56 +1,7 @@
 import keywordsArray from './data/keywords.json';
 import stringCompletionsArray from './data/stringCompletions.json';
 import docs from "./data/docs.json";
-
-
-
-export enum StringKind {
-	INPUT,
-	OUTPUT,
-	TARGETNAME,
-	CLASSNAME,
-	// No division between float / bools / ints since they're interchangable
-	NUMBER_KEYVALUE,
-	VECTOR_KEYVALUE,
-	STRING_KEYVALUE,
-	ATTRIBUTE,
-	MODEL,
-	RAW_SOUND,
-	SOUND_SCRIPT,
-	PARTICLE,
-	CONVAR,
-	CLIENT_CONVAR,
-	INT_PROPERTY,
-	BOOL_PROPERTY,
-	FLOAT_PROPERTY,
-	STRING_PROPERTY,
-	ENTITY_PROPERTY,
-	VECTOR_PROPERTY,
-	INT_ARRAY_PROPERTY,
-	BOOL_ARRAY_PROPERTY,
-	FLOAT_ARRAY_PROPERTY,
-	STRING_ARRAY_PROPERTY,
-	ENTITY_ARRAY_PROPERTY,
-	VECTOR_ARRAY_PROPERTY,
-	ARRAY_PROPERTY,
-	PROPERTY,
-	SOUND
-}
-
-export interface Doc {
-	detail: string;
-	desc?: string;
-	successor?: string;
-	append?: string;
-	snippet?: string;
-	[param: number]: StringKind | undefined;
-};
-
-export type Docs = Map<string, Doc>;
-
-export type InstanceDocs = Map<string, Docs>;
-
-
+import { StringKind, Doc, Docs, InstanceDocs } from './squirrel';
 
 export const keywords = new Set<string>(keywordsArray);
 

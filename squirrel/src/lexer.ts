@@ -1,291 +1,13 @@
 import CharCode from './charCode';
 import * as globals from './globals';
+import { Doc, Token, Error, SyntaxKind, isTokenAComment, StringToken, reservedIdentifiers, } from './squirrel';
 
-export const enum TokenKind {
-	SKIP = -2,
-	INVALID = -1,
-	EOF = 0,
-
-	LINE_FEED,
-	LEFT_ROUND,
-	RIGHT_ROUND,
-	LEFT_CURLY,
-	RIGHT_CURLY,
-	LEFT_SQUARE,
-	RIGHT_SQUARE,
-	SEMICOLON,
-	COMMA,
-	TERNARY,
-	BIT_XOR,
-	BIT_NOT,
-	DOT,
-	COLON,
-	PLUS,
-	MINUS,
-	MULTIPLY,
-	DIVIDE,
-	MODULO,
-	BIT_AND,
-	BIT_OR,
-	LESS,
-	GREATER,
-	ASSIGN,
-	NOT,
-	LAMBDA,
-
-	IDENTIFIER,
-	STRING,
-	VERBATIM_STRING,
-	INTEGER,
-	FLOAT,
-	BASE,
-	DELETE,
-	EQUALS,
-	NOT_EQUALS,
-	LESS_EQUALS,
-	GREATER_EQUALS,
-	SWITCH,
-	AND,
-	OR,
-	IF,
-	ELSE,
-	WHILE,
-	BREAK,
-	FOR,
-	DO,
-	NULL,
-	FOREACH,
-	IN,
-	NEW_SLOT,
-	LOCAL,
-	CLONE,
-	FUNCTION,
-	RETURN,
-	TYPEOF,
-	UNARY_MINUS,
-	PLUS_ASSIGN,
-	MINUS_ASSIGN,
-	CONTINUE,
-	YIELD,
-	TRY,
-	CATCH,
-	THROW,
-	SHIFT_LEFT,
-	SHIFT_RIGHT,
-	RESUME,
-	DOUBLE_COLON,
-	CASE,
-	DEFAULT,
-	THIS,
-	PLUS_PLUS,
-	MINUS_MINUS,
-	THREE_WAY_CMP,
-	UNSIGNED_SHIFT_RIGHT,
-	CLASS,
-	EXTENDS,
-	CONSTRUCTOR,
-	INSTANCEOF,
-	VARPARAMS,
-	__LINE__,
-	__FILE__,
-	TRUE,
-	FALSE,
-	MULTIPLY_ASSIGN,
-	DIVIDE_ASSIGN,
-	MODULO_ASSIGN,
-	ATTR_OPEN,
-	ATTR_CLOSE,
-	STATIC,
-	ENUM,
-	CONST,
-	RAWCALL,
-
-	LINE_COMMENT,
-	BLOCK_COMMENT,
-	DOC
-};
-
-export const tokenKindToString = new Map<TokenKind, string>([
-	[TokenKind.EOF, 'EOF'],
-
-	[TokenKind.LINE_FEED, 'line feed'],
-	[TokenKind.LEFT_ROUND, '('],
-	[TokenKind.RIGHT_ROUND, ')'],
-	[TokenKind.LEFT_CURLY, '{'],
-	[TokenKind.RIGHT_CURLY, '}'],
-	[TokenKind.LEFT_SQUARE, '['],
-	[TokenKind.RIGHT_SQUARE, ']'],
-	[TokenKind.SEMICOLON, ';'],
-	[TokenKind.COMMA, ','],
-	[TokenKind.TERNARY, '?'],
-	[TokenKind.BIT_XOR, '^'],
-	[TokenKind.BIT_NOT, '~'],
-	[TokenKind.DOT, '.'],
-	[TokenKind.COLON, ':'],
-	[TokenKind.PLUS, '+'],
-	[TokenKind.MINUS, '-'],
-	[TokenKind.MULTIPLY, '*'],
-	[TokenKind.DIVIDE, '/'],
-	[TokenKind.MODULO, '%'],
-	[TokenKind.BIT_AND, '&'],
-	[TokenKind.BIT_OR, '|'],
-	[TokenKind.LESS, '<'],
-	[TokenKind.GREATER, '>'],
-	[TokenKind.ASSIGN, '='],
-	[TokenKind.NOT, '!'],
-	[TokenKind.LAMBDA, '@'],
-
-	[TokenKind.EQUALS, '=='],
-	[TokenKind.NOT_EQUALS, '!='],
-	[TokenKind.LESS_EQUALS, '<='],
-	[TokenKind.GREATER_EQUALS, '>='],
-	[TokenKind.SHIFT_LEFT, '<<'],
-	[TokenKind.SHIFT_RIGHT, '>>'],
-	[TokenKind.UNSIGNED_SHIFT_RIGHT, '>>>'],
-	[TokenKind.THREE_WAY_CMP, '<=>'],
-	[TokenKind.NEW_SLOT, '<-'],
-	[TokenKind.DOUBLE_COLON, '::'],
-	[TokenKind.PLUS_ASSIGN, '+='],
-	[TokenKind.MINUS_ASSIGN, '-='],
-	[TokenKind.MULTIPLY_ASSIGN, '*='],
-	[TokenKind.DIVIDE_ASSIGN, '/='],
-	[TokenKind.MODULO_ASSIGN, '%='],
-	[TokenKind.PLUS_PLUS, '++'],
-	[TokenKind.MINUS_MINUS, '--'],
-	[TokenKind.ATTR_OPEN, '</'],
-	[TokenKind.ATTR_CLOSE, '/>'],
-	[TokenKind.VARPARAMS, '...'],
-
-	// Literals and Identifiers
-	[TokenKind.IDENTIFIER, 'identifier'],
-	[TokenKind.STRING, 'string'],
-	[TokenKind.VERBATIM_STRING, 'string'],
-	[TokenKind.INTEGER, 'integer'],
-	[TokenKind.FLOAT, 'float'],
-
-	// Keywords
-	[TokenKind.IF, 'if'],
-	[TokenKind.ELSE, 'else'],
-	[TokenKind.WHILE, 'while'],
-	[TokenKind.FOR, 'for'],
-	[TokenKind.FOREACH, 'foreach'],
-	[TokenKind.IN, 'in'],
-	[TokenKind.BREAK, 'break'],
-	[TokenKind.CONTINUE, 'continue'],
-	[TokenKind.RETURN, 'return'],
-	[TokenKind.TRY, 'try'],
-	[TokenKind.CATCH, 'catch'],
-	[TokenKind.THROW, 'throw'],
-	[TokenKind.YIELD, 'yield'],
-	[TokenKind.RESUME, 'resume'],
-	[TokenKind.SWITCH, 'switch'],
-	[TokenKind.CASE, 'case'],
-	[TokenKind.DEFAULT, 'default'],
-
-	[TokenKind.NULL, 'null'],
-	[TokenKind.TRUE, 'true'],
-	[TokenKind.FALSE, 'false'],
-	[TokenKind.LOCAL, 'local'],
-	[TokenKind.TYPEOF, 'typeof'],
-	[TokenKind.INSTANCEOF, 'instanceof'],
-	[TokenKind.CLONE, 'clone'],
-	[TokenKind.FUNCTION, 'function'],
-	[TokenKind.CLASS, 'class'],
-	[TokenKind.CONSTRUCTOR, 'constructor'],
-	[TokenKind.EXTENDS, 'extends'],
-	[TokenKind.THIS, 'this'],
-	[TokenKind.STATIC, 'static'],
-	[TokenKind.ENUM, 'enum'],
-	[TokenKind.CONST, 'const'],
-	[TokenKind.RAWCALL, 'rawcall'],
-	[TokenKind.DELETE, 'delete'],
-
-	// Special tokens
-	[TokenKind.__LINE__, '__LINE__'],
-	[TokenKind.__FILE__, '__FILE__'],
-
-]);
-
-const keywords = new Map<string, TokenKind>([
-	['while', TokenKind.WHILE],
-	['do', TokenKind.DO],
-	['if', TokenKind.IF],
-	['else', TokenKind.ELSE],
-	['break', TokenKind.BREAK],
-	['continue', TokenKind.CONTINUE],
-	['return', TokenKind.RETURN],
-	['null', TokenKind.NULL],
-	['function', TokenKind.FUNCTION],
-	['local', TokenKind.LOCAL],
-	['for', TokenKind.FOR],
-	['foreach', TokenKind.FOREACH],
-	['in', TokenKind.IN],
-	['typeof', TokenKind.TYPEOF],
-	['base', TokenKind.BASE],
-	['delete', TokenKind.DELETE],
-	['try', TokenKind.TRY],
-	['catch', TokenKind.CATCH],
-	['throw', TokenKind.THROW],
-	['clone', TokenKind.CLONE],
-	['yield', TokenKind.YIELD],
-	['resume', TokenKind.RESUME],
-	['switch', TokenKind.SWITCH],
-	['case', TokenKind.CASE],
-	['default', TokenKind.DEFAULT],
-	['this', TokenKind.THIS],
-	['class', TokenKind.CLASS],
-	['extends', TokenKind.EXTENDS],
-	['constructor', TokenKind.CONSTRUCTOR],
-	['instanceof', TokenKind.INSTANCEOF],
-	['true', TokenKind.TRUE],
-	['false', TokenKind.FALSE],
-	['static', TokenKind.STATIC],
-	['enum', TokenKind.ENUM],
-	['const', TokenKind.CONST],
-	['__LINE__', TokenKind.__LINE__],
-	['__FILE__', TokenKind.__FILE__],
-	['rawcall', TokenKind.RAWCALL]
-]);
-
-export function isTokenAComment(token: Token): boolean {
-	const kind = token.kind;
-	return kind === TokenKind.LINE_COMMENT || kind === TokenKind.BLOCK_COMMENT || kind === TokenKind.DOC;
-}
-
-export function isTokenSkippable(token: Token): boolean {
-	return isTokenAComment(token) || token.kind === TokenKind.LINE_FEED;
-}
-
-export function isTokenAString(token: Token): boolean {
-	const kind = token.kind;
-	return kind === TokenKind.STRING || kind === TokenKind.VERBATIM_STRING;
-}
-
-
-export interface TokenError {
-	message: string,
-	start: number,
-	end: number
-}
-
-export interface Token {
-	kind: TokenKind;
-	value: string;
-	start: number;
-	end: number;
-}
-
-export interface StringToken extends Token {
-	sourcePositions: number[];
-	lexer?: Lexer;
-}
-
-type TokenFunction = () => TokenKind | Token;
+type TokenFunction = () => SyntaxKind | Token;
 
 type TokenMap = {
-	[char: string]: TokenKind | TokenMap | TokenFunction;
+	[char: string]: SyntaxKind | TokenMap | TokenFunction;
 } & {
-	fallback: TokenKind;
+	fallback: SyntaxKind;
 };
 
 export class Lexer {
@@ -305,7 +27,7 @@ export class Lexer {
 	private sourcePositionIndex: number;
 	private readonly sourcePositionBound: number;
 
-	private readonly errors: TokenError[];
+	private readonly errors: Error[];
 
 	constructor(text: string, sourcePositions?: number[]) {
 		this.text = text;
@@ -358,20 +80,20 @@ export class Lexer {
 		return this.previousToken;
 	}
 
-	public getErrors(): TokenError[] {
+	public getErrors(): Error[] {
 		return this.errors;
 	}
 
 	private newToken(token: Token): Token {
 		const { kind, value, start, end } = token;
-		if (kind === TokenKind.INVALID) {
+		if (kind === SyntaxKind.Invalid) {
 			this.errors.push({ message: `Invalid token '${value}'`, start, end });
 			return this.lex();
 		}
 
 		this.tokens.push(token);
 
-		if (kind === TokenKind.LINE_FEED) {
+		if (kind === SyntaxKind.LineFeedToken) {
 			// The next cycle previousToken would be set to this one
 			this.currentToken = token;
 			return this.lex();
@@ -397,7 +119,7 @@ export class Lexer {
 			if (this.readEOF) {
 				const position = this.getSourcePosition();
 
-				return this.newToken({ kind: TokenKind.EOF, value: '', start: position, end: position });
+				return this.newToken({ kind: SyntaxKind.EOF, value: '', start: position, end: position });
 			}
 
 			const entry = tokenMap[this.current];
@@ -409,7 +131,7 @@ export class Lexer {
 			}
 
 			if (typeof entry === "number") {
-				if (entry === TokenKind.SKIP) {
+				if (entry === SyntaxKind.Skip) {
 					this.next();
 					continue;
 				}
@@ -478,16 +200,16 @@ export class Lexer {
 		}
 	}
 
-	public lexBlockComment(): TokenKind {
-		let kind = TokenKind.BLOCK_COMMENT;
+	public lexBlockComment(): SyntaxKind {
+		let kind = SyntaxKind.BlockComment;
 		this.next();
 		if (this.charCode() === CharCode.ASTERISK) {
 			this.next();
 			if (this.charCode() === CharCode.SLASH) {
 				this.next();
-				return TokenKind.BLOCK_COMMENT;
+				return SyntaxKind.BlockComment;
 			}
-			kind = TokenKind.DOC;
+			kind = SyntaxKind.DocComment;
 		}
 		while (!this.readEOF) {
 			if (this.charCode() === CharCode.ASTERISK) {
@@ -505,18 +227,18 @@ export class Lexer {
 		return kind;
 	}
 
-	public lexLineComment(): TokenKind {
+	public lexLineComment(): SyntaxKind {
 		do {
 			this.next();
 		} while (!this.readEOF && this.charCode() !== CharCode.LINE_FEED);
 
-		return TokenKind.LINE_COMMENT;
+		return SyntaxKind.LineComment;
 	}
 
 	public lexVerbatimString(): StringToken {
 		const start = this.getSourcePosition(-2);
 		const opening = this.charCode();
-		const kind = TokenKind.VERBATIM_STRING;
+		const kind = SyntaxKind.VerbatimStringToken;
 		const sourcePositions: number[] = [this.getSourcePosition()];
 
 		let value = "";
@@ -573,7 +295,7 @@ export class Lexer {
 	public lexString(): StringToken | Token {
 		const start = this.getSourcePosition(-1);
 		const opening = this.charCode();
-		const kind = opening === CharCode.QUOTE ? TokenKind.INTEGER : TokenKind.STRING;
+		const kind = opening === CharCode.QUOTE ? SyntaxKind.IntegerToken : SyntaxKind.StringToken;
 		const sourcePositions: number[] = [this.getSourcePosition()];
 
 		let value = "";
@@ -585,7 +307,7 @@ export class Lexer {
 			switch (charCode) {
 			case opening:
 				const end = this.getSourcePosition();
-				if (kind === TokenKind.STRING) {
+				if (kind === SyntaxKind.StringToken) {
 					this.next();
 					return { kind, value, start, end, sourcePositions };
 				}
@@ -603,7 +325,7 @@ export class Lexer {
 				this.next();
 				return { kind, value: value.charCodeAt(0).toString(), start, end };
 			case CharCode.LINE_FEED:
-				this.errors.push({ message: `Multiline in a ${kind === TokenKind.STRING ? "string" : "character"} literal.`, start: this.getSourcePosition(-1), end: this.getSourcePosition(-1) });
+				this.errors.push({ message: `Multiline in a ${kind === SyntaxKind.StringToken ? "string" : "character"} literal.`, start: this.getSourcePosition(-1), end: this.getSourcePosition(-1) });
 				break;
 			case CharCode.BACKTICK:
 				value += '"';
@@ -620,7 +342,7 @@ export class Lexer {
 				case CharCode.U:
 					const escape = this.processHexEscape(charCode === CharCode.u ? 4 : 8);
 					sourcePositions.push(this.getSourcePosition(-1));
-					if (kind === TokenKind.INTEGER && escape.charCodeAt(0) > 0x7F) {
+					if (kind === SyntaxKind.IntegerToken && escape.charCodeAt(0) > 0x7F) {
 						this.errors.push({ message: "Unicode characters take multiple bytes to store.", start, end: this.getSourcePosition() });
 					}
 					value += escape;
@@ -677,7 +399,7 @@ export class Lexer {
 		}
 
 		const end = this.getSourcePosition();
-		this.errors.push({ message: `Unterminated ${kind === TokenKind.STRING ? "string" : "character"} literal.`, start: this.getSourcePosition(-1), end });
+		this.errors.push({ message: `Unterminated ${kind === SyntaxKind.StringToken ? "string" : "character"} literal.`, start: this.getSourcePosition(-1), end });
 		return { kind, value, start, end, sourcePositions };
 	}
 
@@ -685,7 +407,7 @@ export class Lexer {
 		const textStart = this.cursor - 1;
 		const start = this.getSourcePosition(-1);
 		const first = this.charCode();
-		let kind = TokenKind.INTEGER;
+		let kind = SyntaxKind.IntegerToken;
 
 		this.next();
 		let charCode = this.charCode();
@@ -703,9 +425,9 @@ export class Lexer {
 
 		while (!this.readEOF) {
 			if (charCode === CharCode.DOT) {
-				kind = TokenKind.FLOAT;
+				kind = SyntaxKind.FloatToken;
 			} else if (charCode === CharCode.e || charCode === CharCode.E) {
-				kind = TokenKind.FLOAT;
+				kind = SyntaxKind.FloatToken;
 
 				this.next();
 				charCode = this.charCode();
@@ -817,7 +539,7 @@ export class Lexer {
 		const end = this.getSourcePosition(-1);
 
 		const value = this.text.slice(textStart, textEnd);
-		return { kind: keywords.get(value) ?? TokenKind.IDENTIFIER, value, start, end };
+		return { kind: reservedIdentifiers.get(value) ?? SyntaxKind.IdentifierToken, value, start, end };
 	}
 
 	public findTokenAtPosition(offset: number): { token: Token | null, index: number, lexer: Lexer } {
@@ -852,100 +574,100 @@ export class Lexer {
 }
 
 // Avoids creating a map every time the lexer is created
-const tokenMap: Record<string, TokenKind | TokenMap | TokenFunction> = {
-	'\r': TokenKind.SKIP,
-	' ': TokenKind.SKIP,
-	'\t': TokenKind.SKIP,
-	'\n': TokenKind.LINE_FEED,
+const tokenMap: Record<string, SyntaxKind | TokenMap | TokenFunction> = {
+	'\r': SyntaxKind.Skip,
+	' ': SyntaxKind.Skip,
+	'\t': SyntaxKind.Skip,
+	'\n': SyntaxKind.LineFeedToken,
 	'#': Lexer.prototype.lexLineComment,
 	'/': {
 		'*': Lexer.prototype.lexBlockComment,
 		'/': Lexer.prototype.lexLineComment,
-		'=': TokenKind.DIVIDE_ASSIGN,
-		'>': TokenKind.ATTR_CLOSE,
-		fallback: TokenKind.DIVIDE
+		'=': SyntaxKind.SlashEqualsToken,
+		'>': SyntaxKind.SlashGreaterThanToken,
+		fallback: SyntaxKind.SlashToken
 	},
 	'=': {
-		'=': TokenKind.EQUALS,
-		fallback: TokenKind.ASSIGN
+		'=': SyntaxKind.EqualsEqualsToken,
+		fallback: SyntaxKind.EqualsToken
 	},
 	'<': {
 		'=': {
-			'>': TokenKind.THREE_WAY_CMP,
-			fallback: TokenKind.LESS_EQUALS
+			'>': SyntaxKind.LessThanEqualsGreaterThanToken,
+			fallback: SyntaxKind.LessThanEqualsToken
 		},
-		'-': TokenKind.NEW_SLOT,
-		'<': TokenKind.SHIFT_LEFT,
-		'/': TokenKind.ATTR_CLOSE,
-		fallback: TokenKind.LESS
+		'-': SyntaxKind.LessMinusToken,
+		'<': SyntaxKind.LessThanLessThanToken,
+		'/': SyntaxKind.SlashGreaterThanToken,
+		fallback: SyntaxKind.LessThanToken
 	},
 	'>': {
-		'=': TokenKind.GREATER_EQUALS,
+		'=': SyntaxKind.GreaterThanEqualsToken,
 		'>': {
-			'>': TokenKind.UNSIGNED_SHIFT_RIGHT,
-			fallback: TokenKind.SHIFT_RIGHT
+			'>': SyntaxKind.GreaterThanGreaterThanGreaterThanToken,
+			fallback: SyntaxKind.GreaterThanGreaterThanToken
 		},
-		fallback: TokenKind.GREATER
+		fallback: SyntaxKind.GreaterThanToken
 	},
 	'!': {
-		'=': TokenKind.NOT_EQUALS,
-		fallback: TokenKind.NOT
+		'=': SyntaxKind.NotEqualsToken,
+		fallback: SyntaxKind.ExclamationToken
 	},
 	'@': {
 		'"': Lexer.prototype.lexVerbatimString,
 		'`': Lexer.prototype.lexVerbatimString,
-		fallback: TokenKind.LAMBDA
+		fallback: SyntaxKind.AtToken
 	},
 	'"': Lexer.prototype.lexString,
 	'\'': Lexer.prototype.lexString,
 	'`': Lexer.prototype.lexString,
-	'{': TokenKind.LEFT_CURLY,
-	'}': TokenKind.RIGHT_CURLY,
-	'(': TokenKind.LEFT_ROUND,
-	')': TokenKind.RIGHT_ROUND,
-	'[': TokenKind.LEFT_SQUARE,
-	']': TokenKind.RIGHT_SQUARE,
-	';': TokenKind.SEMICOLON,
-	',': TokenKind.COMMA,
-	'?': TokenKind.TERNARY,
-	'^': TokenKind.BIT_XOR,
-	'~': TokenKind.BIT_NOT,
+	'{': SyntaxKind.OpenCurlyToken,
+	'}': SyntaxKind.CloseCurlyToken,
+	'(': SyntaxKind.OpenRoundToken,
+	')': SyntaxKind.CloseRoundToken,
+	'[': SyntaxKind.OpenSquareToken,
+	']': SyntaxKind.RightSquareToken,
+	';': SyntaxKind.SemicolonToken,
+	',': SyntaxKind.CommaToken,
+	'?': SyntaxKind.QuestionToken,
+	'^': SyntaxKind.CaretToken,
+	'~': SyntaxKind.TildaToken,
 	'.': {
 		'.': {
-			'.': TokenKind.VARPARAMS,
-			fallback: TokenKind.INVALID,
+			'.': SyntaxKind.DotDotDotToken,
+			fallback: SyntaxKind.Invalid,
 		},
-		fallback: TokenKind.DOT
+		fallback: SyntaxKind.DotToken
 	},
 	'&': {
-		'&': TokenKind.AND,
-		fallback: TokenKind.BIT_AND
+		'&': SyntaxKind.AmpersandAmpersandToken,
+		fallback: SyntaxKind.AmpersandToken
 	},
 	'|': {
-		'|': TokenKind.OR,
-		fallback: TokenKind.BIT_OR
+		'|': SyntaxKind.PipePipeToken,
+		fallback: SyntaxKind.PipeToken
 	},
 	':': {
-		':': TokenKind.DOUBLE_COLON,
-		fallback: TokenKind.COLON
+		':': SyntaxKind.ColonColonToken,
+		fallback: SyntaxKind.ColonToken
 	},
 	'*': {
-		'=': TokenKind.MULTIPLY_ASSIGN,
-		fallback: TokenKind.MULTIPLY
+		'=': SyntaxKind.AsteriskEqualsToken,
+		fallback: SyntaxKind.AsteriskToken
 	},
 	'%': {
-		'=': TokenKind.MODULO_ASSIGN,
-		fallback: TokenKind.MODULO
+		'=': SyntaxKind.PercentEqualsToken,
+		fallback: SyntaxKind.PercentToken
 	},
 	'-': {
-		'-': TokenKind.MINUS_MINUS,
-		'=': TokenKind.MINUS_ASSIGN,
-		fallback: TokenKind.MINUS
+		'-': SyntaxKind.MinusMinusToken,
+		'=': SyntaxKind.MinusEqualsToken,
+		fallback: SyntaxKind.MinusToken
 	},
 	'+': {
-		'+': TokenKind.PLUS_PLUS,
-		'=': TokenKind.PLUS_ASSIGN,
-		fallback: TokenKind.PLUS
+		'+': SyntaxKind.PlusPlusToken,
+		'=': SyntaxKind.PlusEqualsToken,
+		fallback: SyntaxKind.PlusToken
 	},
 
 	// Whoopsie
@@ -1067,11 +789,11 @@ export class TokenIterator {
 				continue;
 			}
 
-			if (multiline && token.kind === TokenKind.LINE_FEED) {
+			if (multiline && token.kind === SyntaxKind.LineFeedToken) {
 				continue;
 			}
 
-			if (token.kind === TokenKind.IDENTIFIER) {
+			if (token.kind === SyntaxKind.IdentifierToken) {
 				return token.value;
 			}
 
@@ -1085,11 +807,11 @@ export class TokenIterator {
 	public hasDot(): boolean {
 		while (this.hasPrevious()) {
 			const token = this.previous();
-			if (isTokenAComment(token) || token.kind === TokenKind.LINE_FEED) {
+			if (isTokenAComment(token) || token.kind === SyntaxKind.LineFeedToken) {
 				continue;
 			}
 
-			if (token.kind === TokenKind.DOT) {
+			if (token.kind === SyntaxKind.DotToken) {
 				return true;
 			}
 
@@ -1099,7 +821,7 @@ export class TokenIterator {
 		return false;
 	}
 
-	public findMethodDoc(methodName: string | null = null): globals.Doc | undefined {
+	public findMethodDoc(methodName: string | null = null): Doc | undefined {
 		if (!methodName) {
 			methodName = this.readIdentity();
 			if (!methodName) {
@@ -1139,7 +861,7 @@ export class TokenIterator {
 			globals.deprecatedMethods.get(methodName);
 	}
 
-	public findDoc(name: string | null = null): globals.Doc | undefined {
+	public findDoc(name: string | null = null): Doc | undefined {
 		if (!name) {
 			name = this.readIdentity();
 			if (!name) {
