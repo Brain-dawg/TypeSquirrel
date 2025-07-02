@@ -2413,7 +2413,7 @@
       "desc": "Sets the value of the specified key without employing delegation."
     },
     "setdelegate": {
-      "detail": "table.setdelegate(deletgate: table) -> table",
+      "detail": "table.setdelegate(delegate: table) -> table",
       "desc": "This method assigns the passed table as the target’s new custom delegate. The method always returns the target.To remove a delegate, either assign the target with a new delegate, or pass null."
     },
     "keys": {
