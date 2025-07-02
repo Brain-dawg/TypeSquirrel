@@ -1,4 +1,4 @@
-import { StringToken, Token, TokenKind } from 'squirrel';
+import { StringToken, Token, SyntaxKind } from 'squirrel';
 import { Position, Range, Selection, TextDocument, window } from 'vscode';
 
 function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
@@ -22,7 +22,7 @@ export default async function onEnterHandler(document: TextDocument, offset: num
 	const newLineEncodingLength = indent.startsWith('\r') ? 2 : 1;
 	const currentPosition = new Position(line + 1, indent.length - newLineEncodingLength);
 
-	if (token.kind === TokenKind.STRING) {
+	if (token.kind === SyntaxKind.StringToken) {
 		if (!isEnclosed(token, offset, -1)) {
 			return;
 		}
@@ -37,7 +37,7 @@ export default async function onEnterHandler(document: TextDocument, offset: num
 		return;
 	}
 
-	if (token.kind === TokenKind.DOC) {
+	if (token.kind === SyntaxKind.DocComment) {
 		if (!isEnclosed(token, offset, 3)) {
 			return;
 		}
@@ -70,7 +70,7 @@ export default async function onEnterHandler(document: TextDocument, offset: num
 		return;
 	}
 
-	if (token.kind === TokenKind.BLOCK_COMMENT) {
+	if (token.kind === SyntaxKind.BlockComment) {
 		// In case we were on the left of the token
 		if (!isEnclosed(token, offset, 2)) {
 			return;

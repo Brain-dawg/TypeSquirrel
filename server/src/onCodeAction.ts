@@ -1,6 +1,6 @@
 import { CodeAction, CodeActionKind, CodeActionParams, DiagnosticTag, TextEdit, WorkspaceEdit } from 'vscode-languageserver';
 import { documents, getDocumentSettings, documentInfo } from './server';
-import { Token, TokenIterator, TokenKind, globals } from 'squirrel';
+import { Token, TokenIterator, SyntaxKind, globals } from 'squirrel';
 import { TextDocument, Range, Position } from 'vscode-languageserver-textdocument';
 
 export default async function onCodeActionHandler(params: CodeActionParams): Promise<CodeAction[]> {
@@ -112,9 +112,9 @@ function getFirstParam(document: TextDocument, iterator: TokenIterator): { delet
 		token = iterator.next();
 
 		switch (token.kind) {
-		case TokenKind.RIGHT_ROUND:
-		case TokenKind.RIGHT_CURLY:
-		case TokenKind.RIGHT_SQUARE:
+		case SyntaxKind.CloseRoundToken:
+		case SyntaxKind.CloseCurlyToken:
+		case SyntaxKind.RightSquareToken:
 			depth--;
 			if (depth === 0 && start) {
 				const deleteRange: Range = { start, end: document.positionAt(token.start) };
@@ -123,15 +123,15 @@ function getFirstParam(document: TextDocument, iterator: TokenIterator): { delet
 				return { deleteRange, textToKeep };
 			}
 			break;
-		case TokenKind.LEFT_CURLY:
-		case TokenKind.LEFT_SQUARE:
-		case TokenKind.LEFT_ROUND:
+		case SyntaxKind.OpenCurlyToken:
+		case SyntaxKind.OpenSquareToken:
+		case SyntaxKind.OpenRoundToken:
 			if (depth === 0) {
 				start = document.positionAt(token.end);
 			}
 			depth++;
 			break;
-		case TokenKind.COMMA:
+		case SyntaxKind.CommaToken:
 			if (start) {
 				const keepRange: Range = { start, end: document.positionAt(token.start) };
 				const textToKeep = document.getText(keepRange);
@@ -142,10 +142,10 @@ function getFirstParam(document: TextDocument, iterator: TokenIterator): { delet
 				return { deleteRange, textToKeep };
 			}
 			break;
-		case TokenKind.LINE_FEED:
-		case TokenKind.LINE_COMMENT:
-		case TokenKind.BLOCK_COMMENT:
-		case TokenKind.DOC:
+		case SyntaxKind.LineFeedToken:
+		case SyntaxKind.LineComment:
+		case SyntaxKind.BlockComment:
+		case SyntaxKind.DocComment:
 			continue;
 		default:
 			if (depth === 0) {
@@ -172,26 +172,26 @@ function getCallBodyRange(document: TextDocument, iterator: TokenIterator): Rang
 		token = iterator.next();
 
 		switch (token.kind) {
-		case TokenKind.RIGHT_ROUND:
-		case TokenKind.RIGHT_CURLY:
-		case TokenKind.RIGHT_SQUARE:
+		case SyntaxKind.CloseRoundToken:
+		case SyntaxKind.CloseCurlyToken:
+		case SyntaxKind.RightSquareToken:
 			depth--;
 			if (depth === 0 && start) {
 				return { start, end: document.positionAt(token.start) };
 			}
 			break;
-		case TokenKind.LEFT_CURLY:
-		case TokenKind.LEFT_SQUARE:
-		case TokenKind.LEFT_ROUND:
+		case SyntaxKind.OpenCurlyToken:
+		case SyntaxKind.OpenSquareToken:
+		case SyntaxKind.OpenRoundToken:
 			if (depth === 0) {
 				start = document.positionAt(token.end);
 			}
 			depth++;
 			break;
-		case TokenKind.LINE_FEED:
-		case TokenKind.LINE_COMMENT:
-		case TokenKind.BLOCK_COMMENT:
-		case TokenKind.DOC:
+		case SyntaxKind.LineFeedToken:
+		case SyntaxKind.LineComment:
+		case SyntaxKind.BlockComment:
+		case SyntaxKind.DocComment:
 			continue;
 		default:
 			if (depth === 0) {

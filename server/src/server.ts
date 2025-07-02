@@ -15,7 +15,7 @@ import {
 } from 'vscode-languageserver/node';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 
-import { isTokenAComment, isTokenAString, isTokenSkippable, Lexer, Parser, StringToken, Token, TokenIterator, TokenKind } from 'squirrel';
+import { isTokenAComment, isTokenAString, isTokenSkippable, Lexer, Parser, StringToken, Token, TokenIterator, SyntaxKind } from 'squirrel';
 
 import onHoverHandler from './onHover';
 import { onCompletionHandler, onCompletionResolveHandler } from './onCompletion';
@@ -184,7 +184,7 @@ connection.onRequest('getToken', (params: { uri: string, offset: number }): Toke
 }); 
 
 function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagnostic[]) {
-	for (let token = lexer.lex(); token.kind !== TokenKind.EOF; token = lexer.lex()) {
+	for (let token = lexer.lex(); token.kind !== SyntaxKind.EOF; token = lexer.lex()) {
 		// lex
 	}
 
@@ -203,7 +203,7 @@ function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagno
 			token = iterator.next();
 		} while (isTokenSkippable(token));
 
-		if (token.kind === TokenKind.COMMA) {
+		if (token.kind === SyntaxKind.CommaToken) {
 			do {
 				token = iterator.next();
 			} while (isTokenSkippable(token));
@@ -241,9 +241,8 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	const text = document.getText();
 	const lexer = new Lexer(text);
 	
-	/*
-	const parser = new Parser(lexer);
-	parser.parse();*/
+	// const parser = new Parser(lexer);
+	// parser.parse();
 
 	documentInfo.set(document.uri, {
 		globalLexer: lexer,
@@ -279,7 +278,7 @@ function runParse(document: TextDocument, lexer: Lexer, diagnostics: Diagnostic[
 	const iterator = new TokenIterator(lexer.getTokens());
 	while (iterator.hasNext()) {
 		const token = iterator.next();
-		if (token.kind !== TokenKind.IDENTIFIER) {
+		if (token.kind !== SyntaxKind.IdentifierToken) {
 			continue;
 		}
 
@@ -363,15 +362,15 @@ function getParamCount(signature: string): { minParamCount: number, maxParamCoun
 	let paramCount = 1;
 	let defaultParamCount = 0;
 	let isVariadic = false;
-	for (let token = lexer.lex(); token.kind !== TokenKind.EOF; token = lexer.lex()) {
+	for (let token = lexer.lex(); token.kind !== SyntaxKind.EOF; token = lexer.lex()) {
 		switch (token.kind) {
-		case TokenKind.COMMA:
+		case SyntaxKind.CommaToken:
 			paramCount++;
 			break;
-		case TokenKind.ASSIGN:
+		case SyntaxKind.EqualsToken:
 			defaultParamCount++;
 			break;
-		case TokenKind.VARPARAMS:
+		case SyntaxKind.DotDotDotToken:
 			isVariadic = true;
 			break;
 		}
@@ -387,10 +386,10 @@ function getUsedParamCount(iterator: TokenIterator): number {
 	// Find the (
 	while (iterator.hasNext()) {
 		const token = iterator.next();
-		if (isTokenAComment(token) || token.kind === TokenKind.LINE_FEED) {
+		if (isTokenAComment(token) || token.kind === SyntaxKind.LineFeedToken) {
 			continue;
 		}
-		if (token.kind === TokenKind.LEFT_ROUND) {
+		if (token.kind === SyntaxKind.OpenRoundToken) {
 			break;
 		}
 
@@ -405,27 +404,27 @@ function getUsedParamCount(iterator: TokenIterator): number {
 	while (iterator.hasNext()) {
 		const token = iterator.next();
 		switch (token.kind) {
-		case TokenKind.RIGHT_ROUND:
-		case TokenKind.RIGHT_CURLY:
-		case TokenKind.RIGHT_SQUARE:
+		case SyntaxKind.CloseRoundToken:
+		case SyntaxKind.CloseCurlyToken:
+		case SyntaxKind.RightSquareToken:
 			depth--;
 			if (depth === 0) {
 				return foundParam ? paramCount + 1 : 0;
 			}
 			break;
-		case TokenKind.LEFT_ROUND:
-		case TokenKind.LEFT_CURLY:
-		case TokenKind.LEFT_SQUARE:
+		case SyntaxKind.OpenRoundToken:
+		case SyntaxKind.OpenCurlyToken:
+		case SyntaxKind.OpenSquareToken:
 			depth++;
 			break;
-		case TokenKind.COMMA:
+		case SyntaxKind.CommaToken:
 			if (depth === 1) {
 				paramCount++;
 			}
 			break;
 		}
 
-		if (!foundParam && !isTokenAComment(token) && token.kind !== TokenKind.LINE_FEED) {
+		if (!foundParam && !isTokenAComment(token) && token.kind !== SyntaxKind.LineFeedToken) {
 			foundParam = true;
 		}
 	}

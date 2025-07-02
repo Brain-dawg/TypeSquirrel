@@ -1,6 +1,6 @@
 import { Hover, MarkupKind, TextDocumentPositionParams } from 'vscode-languageserver';
 import { documents, getDocumentSettings, documentInfo } from './server';
-import { TokenIterator, TokenKind, isTokenAComment } from 'squirrel';
+import { TokenIterator, SyntaxKind, isTokenAComment } from 'squirrel';
 
 
 export default async function onHoverHandler(params: TextDocumentPositionParams): Promise<Hover | null> {
@@ -27,7 +27,7 @@ export default async function onHoverHandler(params: TextDocumentPositionParams)
 	const result = lexer.findTokenAtPosition(offset);
 	lexer = result.lexer;
 	
-	if (!result.token || isTokenAComment(result.token) || result.token.kind !== TokenKind.IDENTIFIER) {
+	if (!result.token || isTokenAComment(result.token) || result.token.kind !== SyntaxKind.IdentifierToken) {
 		return null;
 	}
 
