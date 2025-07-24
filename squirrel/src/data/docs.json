@@ -2313,7 +2313,7 @@
       "desc": "Returns the angles resulting from the rotation."
     },
     "find": {
-      "detail": "string.find(substring: string, start_index: int = null) -> int | null",
+      "detail": "string.find(substring: string, start_index: int = 0) -> int | null",
       "desc": "Looks for the sub-string passed as its first parameter, starting at either the beginning of the string or at a specific character index if one is provided as a second parameter. If the sub-string is found, returns the index at which it first occurs, otherwise returns null."
     },
     "len": {
@@ -2345,11 +2345,11 @@
       "desc": "Removes all of the items from an array/table."
     },
     "extend": {
-      "detail": "array.extend(other: array) -> null",
+      "detail": "array.extend(other: array) -> array",
       "desc": "Combines two arrays into one."
     },
     "filter": {
-      "detail": "array.filter(filter: function) -> null",
+      "detail": "array.filter(condition: function) -> array",
       "desc": "Applies a filter function to an array's items, storing the results in a new array."
     },
     "insert": {
@@ -2465,7 +2465,7 @@
       "desc": "Returns the attributes of the specified member. if the parameter member is null the function returns the class level attributes."
     },
     "setattributes": {
-      "detail": "class.getattributes(member_name: string, value: any) -> any",
+      "detail": "class.setattributes(member_name: string, value: any) -> any",
       "desc": "Sets the attribute of the specified member and returns the previous attribute value. if the parameter member is null the function sets the class level attributes."
     },
     "newmember": {
@@ -3470,7 +3470,7 @@
     },
 
     "Quaternion": {
-      "detail": "Quaternion(x: float, y: float, z: float, w: float) -> Quaternion",
+      "detail": "Quaternion(x: float = 0.0, y: float = 0.0, z: float = 0.0, w: float = 0.0) -> Quaternion",
       "desc": "Creates a new quaternion of the form `w + xi + yj + zk`."
     },
 

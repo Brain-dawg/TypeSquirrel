@@ -85,7 +85,6 @@ connection.onInitialized(() => {
 	}
 });
 
-// The example settings
 interface Settings {
 	enableSignatureHelp?: boolean,
 	enableDiagnostics?: boolean,
@@ -94,9 +93,7 @@ interface Settings {
 	completionAutoParantheses?: boolean,
 }
 
-// The global settings, used when the `workspace/configuration` request is not supported by the client.
-// Please note that this is not the case when using this server with the client provided in this example
-// but could happen with other clients.
+
 const defaultSettings: Settings = {
 	enableSignatureHelp: true,
 	enableDiagnostics: true,
@@ -170,9 +167,11 @@ documents.onDidClose(e => {
 
 documents.listen(connection);
 
+/*
 connection.onDidChangeWatchedFiles(_change => {
 	connection.console.log('We received a file change event');
 });
+*/
 
 connection.onRequest('getToken', (params: { uri: string, offset: number }): Token | null => {
 	const info = documentInfo.get(params.uri);
@@ -238,8 +237,8 @@ function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagno
 
 async function validateTextDocument(document: TextDocument): Promise<Diagnostic[]> {
 	const settings = await getDocumentSettings(document.uri);
-	const text = document.getText();
-	const lexer = new Lexer(text);
+	
+	const lexer = new Lexer(document.getText());
 	
 	// const parser = new Parser(lexer);
 	// parser.parse();
