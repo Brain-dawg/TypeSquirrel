@@ -246,11 +246,9 @@ function addCompletionItems(uri: string, items: CompletionItem[], docKind: DocKi
 
 function addStringCompletionItems(uri: string, items: CompletionItem[], range: Range, quote: string, kind: StringKind) {
 	const docs = globals.stringCompletions[kind];
-	const replacement = quote.length > 1 ? '\\\\' + quote : '\\' + quote;
-	
+
 	for (const item of docs) {
-		const escaped = item.replaceAll('"', replacement);
-		const text = quote + escaped + quote;
+		const text = quote + item + quote;
 		items.push({
 			label: item,
 			filterText: text,

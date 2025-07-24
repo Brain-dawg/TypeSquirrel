@@ -55161,7 +55161,6 @@
     "closecaption"
   ],
   [
-    "\"player_array\"",
     "blah.m_WithProxy",
     "m_Activity",
     "m_ActualFlags",
@@ -57873,9 +57872,6 @@
     "m_weaponNames"
   ],
   [
-    "\"healing_array\"",
-    "\"player_object_array\"",
-    "\"team_object_array\"",
     "healing_array_element",
     "m_AttributeManager.m_hOuter",
     "m_EndEntity",
@@ -58301,7 +58297,6 @@
     "pl.v_angle"
   ],
   [
-    "\"player_array\"",
     "m_Local.m_chAreaBits",
     "m_Shared.m_nStreaks",
     "m_VehiclePhysics.m_poseParameters",
@@ -58442,9 +58437,6 @@
     "m_weaponNames"
   ],
   [
-    "\"healing_array\"",
-    "\"player_object_array\"",
-    "\"team_object_array\"",
     "m_hActorList",
     "m_hAttachEntity",
     "m_hControlPointEnts",
