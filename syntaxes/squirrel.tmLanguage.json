@@ -136,7 +136,7 @@
 			"patterns": [
 				{
 					"begin": "(?i)(?<=\\x1brunscriptcode\\x1b)(?!\\x1b)",
-					"end": "(?=\"|\\x1b)",
+					"end": "(?=\"|\r|\n|\\x1b)",
 					"patterns": [
 						{
 							"include": "#comments"
@@ -160,7 +160,7 @@
 				},
 				{
 					"begin": "(?i)(?<=,runscriptcode,)(?!,)",
-					"end": "(?=\"|,)",
+					"end": "(?=\"|\r|\n|,)",
 					"patterns": [
 						{
 							"include": "#comments"
@@ -184,7 +184,7 @@
 				},
 				{
 					"begin": "(?i)(?<=:runscriptcode:)(?!:)",
-					"end": "(?=\"|:|,|\\x1b)",
+					"end": "(?=\"|\r|\n|:|,|\\x1b)",
 					"patterns": [
 						{
 							"include": "#comments"
@@ -245,7 +245,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\"",
+					"end": "\"|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -334,7 +334,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\"",
+					"end": "\"|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -401,7 +401,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\"",
+					"end": "\"|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -456,7 +456,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\\\\\"",
+					"end": "\\\\\"|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -545,7 +545,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\\\\\"",
+					"end": "\\\\\"|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -613,7 +613,7 @@
 							"name": "punctuation.definition.string.begin.squirrel"
 						}
 					},
-					"end": "\\\\\"",
+					"end": "\\\\\"|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel"
@@ -663,7 +663,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "`",
+					"end": "`|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -752,7 +752,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "`",
+					"end": "`|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -820,7 +820,7 @@
 							"name": "punctuation.definition.string.begin.squirrel"
 						}
 					},
-					"end": "`",
+					"end": "`|\r|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel"
@@ -1018,7 +1018,7 @@
 				},
 				{
 					"name": "string.quoted.single",
-					"match": "(\\')(?:[^'\\\\]|(\\\\.|\\\\x\\h{1,2}|\\\\u\\h{1,4}|\\\\U\\h{1,8}))(\\')",
+					"match": "(\\')(?:[^'\\\\]|(\\\\.|\\\\x\\h{1,2}|\\\\u\\h{1,4}|\\\\U\\h{1,8}))(\\')?",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel"

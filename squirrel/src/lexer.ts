@@ -24,10 +24,174 @@ export class Lexer {
 	private readonly tokens: Token[];
 
 	private readonly sourcePositions: number[];
-	private sourcePositionIndex: number;
-	private readonly sourcePositionBound: number;
-
 	private readonly errors: Error[];
+
+	private readonly tokenMap: Record<string, SyntaxKind | TokenMap | TokenFunction> = {
+		'\r': SyntaxKind.Skip,
+		' ': SyntaxKind.Skip,
+		'\t': SyntaxKind.Skip,
+		'\n': SyntaxKind.LineFeedToken,
+		'#': this.lexLineComment.bind(this),
+		'/': {
+			'*': this.lexBlockComment.bind(this),
+			'/': this.lexLineComment.bind(this),
+			'=': SyntaxKind.SlashEqualsToken,
+			'>': SyntaxKind.SlashGreaterThanToken,
+			fallback: SyntaxKind.SlashToken
+		},
+		'=': {
+			'=': SyntaxKind.EqualsEqualsToken,
+			fallback: SyntaxKind.EqualsToken
+		},
+		'<': {
+			'=': {
+				'>': SyntaxKind.LessThanEqualsGreaterThanToken,
+				fallback: SyntaxKind.LessThanEqualsToken
+			},
+			'-': SyntaxKind.LessMinusToken,
+			'<': SyntaxKind.LessThanLessThanToken,
+			'/': SyntaxKind.SlashGreaterThanToken,
+			fallback: SyntaxKind.LessThanToken
+		},
+		'>': {
+			'=': SyntaxKind.GreaterThanEqualsToken,
+			'>': {
+				'>': SyntaxKind.GreaterThanGreaterThanGreaterThanToken,
+				fallback: SyntaxKind.GreaterThanGreaterThanToken
+			},
+			fallback: SyntaxKind.GreaterThanToken
+		},
+		'!': {
+			'=': SyntaxKind.NotEqualsToken,
+			fallback: SyntaxKind.ExclamationToken
+		},
+		'@': {
+			'"': this.lexVerbatimString.bind(this),
+			// '`': this.lexVerbatimString.bind(this),
+			fallback: SyntaxKind.AtToken
+		},
+		'"': this.lexString.bind(this),
+		'\'': this.lexString.bind(this),
+		// '`': this.lexString.bind(this),
+		'{': SyntaxKind.OpenCurlyToken,
+		'}': SyntaxKind.CloseCurlyToken,
+		'(': SyntaxKind.OpenRoundToken,
+		')': SyntaxKind.CloseRoundToken,
+		'[': SyntaxKind.OpenSquareToken,
+		']': SyntaxKind.RightSquareToken,
+		';': SyntaxKind.SemicolonToken,
+		',': SyntaxKind.CommaToken,
+		'?': SyntaxKind.QuestionToken,
+		'^': SyntaxKind.CaretToken,
+		'~': SyntaxKind.TildaToken,
+		'.': {
+			'.': {
+				'.': SyntaxKind.DotDotDotToken,
+				fallback: SyntaxKind.Invalid,
+			},
+			fallback: SyntaxKind.DotToken
+		},
+		'&': {
+			'&': SyntaxKind.AmpersandAmpersandToken,
+			fallback: SyntaxKind.AmpersandToken
+		},
+		'|': {
+			'|': SyntaxKind.PipePipeToken,
+			fallback: SyntaxKind.PipeToken
+		},
+		':': {
+			':': SyntaxKind.ColonColonToken,
+			fallback: SyntaxKind.ColonToken
+		},
+		'*': {
+			'=': SyntaxKind.AsteriskEqualsToken,
+			fallback: SyntaxKind.AsteriskToken
+		},
+		'%': {
+			'=': SyntaxKind.PercentEqualsToken,
+			fallback: SyntaxKind.PercentToken
+		},
+		'-': {
+			'-': SyntaxKind.MinusMinusToken,
+			'=': SyntaxKind.MinusEqualsToken,
+			fallback: SyntaxKind.MinusToken
+		},
+		'+': {
+			'+': SyntaxKind.PlusPlusToken,
+			'=': SyntaxKind.PlusEqualsToken,
+			fallback: SyntaxKind.PlusToken
+		},
+
+		// Whoopsie
+		// Identifier
+		'a': this.lexIdentifier.bind(this),
+		'b': this.lexIdentifier.bind(this),
+		'c': this.lexIdentifier.bind(this),
+		'd': this.lexIdentifier.bind(this),
+		'e': this.lexIdentifier.bind(this),
+		'f': this.lexIdentifier.bind(this),
+		'g': this.lexIdentifier.bind(this),
+		'h': this.lexIdentifier.bind(this),
+		'i': this.lexIdentifier.bind(this),
+		'j': this.lexIdentifier.bind(this),
+		'k': this.lexIdentifier.bind(this),
+		'l': this.lexIdentifier.bind(this),
+		'm': this.lexIdentifier.bind(this),
+		'n': this.lexIdentifier.bind(this),
+		'o': this.lexIdentifier.bind(this),
+		'p': this.lexIdentifier.bind(this),
+		'q': this.lexIdentifier.bind(this),
+		'r': this.lexIdentifier.bind(this),
+		's': this.lexIdentifier.bind(this),
+		't': this.lexIdentifier.bind(this),
+		'u': this.lexIdentifier.bind(this),
+		'v': this.lexIdentifier.bind(this),
+		'w': this.lexIdentifier.bind(this),
+		'x': this.lexIdentifier.bind(this),
+		'y': this.lexIdentifier.bind(this),
+		'z': this.lexIdentifier.bind(this),
+
+		'A': this.lexIdentifier.bind(this),
+		'B': this.lexIdentifier.bind(this),
+		'C': this.lexIdentifier.bind(this),
+		'D': this.lexIdentifier.bind(this),
+		'E': this.lexIdentifier.bind(this),
+		'F': this.lexIdentifier.bind(this),
+		'G': this.lexIdentifier.bind(this),
+		'H': this.lexIdentifier.bind(this),
+		'I': this.lexIdentifier.bind(this),
+		'J': this.lexIdentifier.bind(this),
+		'K': this.lexIdentifier.bind(this),
+		'L': this.lexIdentifier.bind(this),
+		'M': this.lexIdentifier.bind(this),
+		'N': this.lexIdentifier.bind(this),
+		'O': this.lexIdentifier.bind(this),
+		'P': this.lexIdentifier.bind(this),
+		'Q': this.lexIdentifier.bind(this),
+		'R': this.lexIdentifier.bind(this),
+		'S': this.lexIdentifier.bind(this),
+		'T': this.lexIdentifier.bind(this),
+		'U': this.lexIdentifier.bind(this),
+		'V': this.lexIdentifier.bind(this),
+		'W': this.lexIdentifier.bind(this),
+		'X': this.lexIdentifier.bind(this),
+		'Y': this.lexIdentifier.bind(this),
+		'Z': this.lexIdentifier.bind(this),
+
+		'_': this.lexIdentifier.bind(this),
+
+		// Numbers
+		'0': this.lexNumber.bind(this),
+		'1': this.lexNumber.bind(this),
+		'2': this.lexNumber.bind(this),
+		'3': this.lexNumber.bind(this),
+		'4': this.lexNumber.bind(this),
+		'5': this.lexNumber.bind(this),
+		'6': this.lexNumber.bind(this),
+		'7': this.lexNumber.bind(this),
+		'8': this.lexNumber.bind(this),
+		'9': this.lexNumber.bind(this)
+	};
 
 	constructor(text: string, sourcePositions?: number[]) {
 		this.text = text;
@@ -39,8 +203,6 @@ export class Lexer {
 		this.tokens = [];
 
 		this.sourcePositions = sourcePositions ?? Array.from({ length: text.length + 1 }, (_, i) => i);
-		this.sourcePositionIndex = 0;
-		this.sourcePositionBound = this.sourcePositions.length - 1;
 
 		this.errors = [];
 
@@ -60,20 +222,20 @@ export class Lexer {
 			return;
 		}
 
-		this.sourcePositionIndex++;
-
-		this.current = this.text[this.cursor++];
-
-		if (this.current === undefined) {
+		if (this.cursor !== this.text.length) {
+			this.current = this.text[this.cursor++];
+		} else {
 			this.readEOF = true;
 			this.current = '';
 		}
+
+		
 	}
 
 	private getSourcePosition(offset: number = 0): number {
-		const index = this.sourcePositionIndex + offset;
+		const index = this.cursor + offset;
 
-		return this.sourcePositions[Math.min(index, this.sourcePositionBound)];
+		return this.sourcePositions[Math.min(index, this.sourcePositions.length - 1)];
 	}
 
 	public getPreviousToken(): Token | undefined {
@@ -122,7 +284,7 @@ export class Lexer {
 				return this.newToken({ kind: SyntaxKind.EOF, value: '', start: position, end: position });
 			}
 
-			const entry = tokenMap[this.current];
+			const entry = this.tokenMap[this.current];
 
 			if (entry === undefined) {
 				this.errors.push({ message: "Invalid character.", start: this.getSourcePosition(-1), end: this.getSourcePosition() });
@@ -148,7 +310,7 @@ export class Lexer {
 			if (typeof entry === "function") {
 				const textStart = this.cursor - 1;
 				const start = this.getSourcePosition(-1);
-				const result = entry.call(this);
+				const result = entry();
 
 				if (typeof result === "number") {
 					const end = this.getSourcePosition(-1);
@@ -185,7 +347,7 @@ export class Lexer {
 			}
 
 			if (typeof entry === "function") {
-				const result = entry.call(this);
+				const result = entry();
 				if (typeof result === "number") {
 					const textEnd = this.cursor - 1;
 					const end = this.getSourcePosition(-1);
@@ -200,7 +362,7 @@ export class Lexer {
 		}
 	}
 
-	public lexBlockComment(): SyntaxKind {
+	private lexBlockComment(): SyntaxKind {
 		let kind = SyntaxKind.BlockComment;
 		this.next();
 		if (this.charCode() === CharCode.ASTERISK) {
@@ -227,7 +389,7 @@ export class Lexer {
 		return kind;
 	}
 
-	public lexLineComment(): SyntaxKind {
+	private lexLineComment(): SyntaxKind {
 		do {
 			this.next();
 		} while (!this.readEOF && this.charCode() !== CharCode.LINE_FEED);
@@ -235,7 +397,7 @@ export class Lexer {
 		return SyntaxKind.LineComment;
 	}
 
-	public lexVerbatimString(): StringToken {
+	private lexVerbatimString(): StringToken {
 		const start = this.getSourcePosition(-2);
 		const opening = this.charCode();
 		const kind = SyntaxKind.VerbatimStringToken;
@@ -253,12 +415,8 @@ export class Lexer {
 					return { kind, value, start, end, sourcePositions };
 				}
 			}
-			if (charCode === CharCode.BACKTICK) {
-				value += '"';
-				sourcePositions.push(this.getSourcePosition());
-				continue;
-			}
-			value += this.current;
+
+			value += charCode === CharCode.BACKTICK ? '"' : this.current;
 			sourcePositions.push(this.getSourcePosition());
 		} while (!this.readEOF);
 
@@ -268,7 +426,7 @@ export class Lexer {
 		return { kind, value, start, end, sourcePositions };
 	}
 
-	public processHexEscape(maxDigits: number): string {
+	private processHexEscape(maxDigits: number): string {
 		const textStart = this.cursor;
 		this.next();
 		const charCode = this.charCode();
@@ -292,7 +450,7 @@ export class Lexer {
 	}
 
 
-	public lexString(): StringToken | Token {
+	private lexString(): StringToken | Token {
 		const start = this.getSourcePosition(-1);
 		const opening = this.charCode();
 		const kind = opening === CharCode.QUOTE ? SyntaxKind.IntegerToken : SyntaxKind.StringToken;
@@ -325,8 +483,8 @@ export class Lexer {
 				this.next();
 				return { kind, value: value.charCodeAt(0).toString(), start, end };
 			case CharCode.LINE_FEED:
-				this.errors.push({ message: `Multiline in a ${kind === SyntaxKind.StringToken ? "string" : "character"} literal.`, start: this.getSourcePosition(-1), end: this.getSourcePosition(-1) });
-				break;
+				this.errors.push({ message: `Unterminated ${kind === SyntaxKind.StringToken ? "string" : "character"} literal.`, start: this.getSourcePosition(-1), end: this.getSourcePosition(-1) });
+				return { kind, value, start, end: this.getSourcePosition(-2), sourcePositions };
 			case CharCode.BACKTICK:
 				value += '"';
 				break;
@@ -403,7 +561,7 @@ export class Lexer {
 		return { kind, value, start, end, sourcePositions };
 	}
 
-	public lexNumber(): Token {
+	private lexNumber(): Token {
 		const textStart = this.cursor - 1;
 		const start = this.getSourcePosition(-1);
 		const first = this.charCode();
@@ -474,7 +632,7 @@ export class Lexer {
 	}
 
 
-	public lexOctal(): string {
+	private lexOctal(): string {
 		const start = this.getSourcePosition(-2);
 		let charCode = this.charCode();
 		let result = charCode - CharCode.N0;
@@ -499,7 +657,7 @@ export class Lexer {
 		return result.toString();
 	}
 
-	public lexHexadecimal(): string {
+	private lexHexadecimal(): string {
 		const start = this.getSourcePosition(-2);
 		let result = 0;
 		do {
@@ -529,7 +687,7 @@ export class Lexer {
 		return result.toString();
 	}
 
-	public lexIdentifier(): Token {
+	private lexIdentifier(): Token {
 		const textStart = this.cursor - 1;
 		const start = this.getSourcePosition(-1);
 		do {
@@ -572,174 +730,6 @@ export class Lexer {
 		return { lexer: this, token: null, index: left - 1 };
 	}
 }
-
-// Avoids creating a map every time the lexer is created
-const tokenMap: Record<string, SyntaxKind | TokenMap | TokenFunction> = {
-	'\r': SyntaxKind.Skip,
-	' ': SyntaxKind.Skip,
-	'\t': SyntaxKind.Skip,
-	'\n': SyntaxKind.LineFeedToken,
-	'#': Lexer.prototype.lexLineComment,
-	'/': {
-		'*': Lexer.prototype.lexBlockComment,
-		'/': Lexer.prototype.lexLineComment,
-		'=': SyntaxKind.SlashEqualsToken,
-		'>': SyntaxKind.SlashGreaterThanToken,
-		fallback: SyntaxKind.SlashToken
-	},
-	'=': {
-		'=': SyntaxKind.EqualsEqualsToken,
-		fallback: SyntaxKind.EqualsToken
-	},
-	'<': {
-		'=': {
-			'>': SyntaxKind.LessThanEqualsGreaterThanToken,
-			fallback: SyntaxKind.LessThanEqualsToken
-		},
-		'-': SyntaxKind.LessMinusToken,
-		'<': SyntaxKind.LessThanLessThanToken,
-		'/': SyntaxKind.SlashGreaterThanToken,
-		fallback: SyntaxKind.LessThanToken
-	},
-	'>': {
-		'=': SyntaxKind.GreaterThanEqualsToken,
-		'>': {
-			'>': SyntaxKind.GreaterThanGreaterThanGreaterThanToken,
-			fallback: SyntaxKind.GreaterThanGreaterThanToken
-		},
-		fallback: SyntaxKind.GreaterThanToken
-	},
-	'!': {
-		'=': SyntaxKind.NotEqualsToken,
-		fallback: SyntaxKind.ExclamationToken
-	},
-	'@': {
-		'"': Lexer.prototype.lexVerbatimString,
-		'`': Lexer.prototype.lexVerbatimString,
-		fallback: SyntaxKind.AtToken
-	},
-	'"': Lexer.prototype.lexString,
-	'\'': Lexer.prototype.lexString,
-	'`': Lexer.prototype.lexString,
-	'{': SyntaxKind.OpenCurlyToken,
-	'}': SyntaxKind.CloseCurlyToken,
-	'(': SyntaxKind.OpenRoundToken,
-	')': SyntaxKind.CloseRoundToken,
-	'[': SyntaxKind.OpenSquareToken,
-	']': SyntaxKind.RightSquareToken,
-	';': SyntaxKind.SemicolonToken,
-	',': SyntaxKind.CommaToken,
-	'?': SyntaxKind.QuestionToken,
-	'^': SyntaxKind.CaretToken,
-	'~': SyntaxKind.TildaToken,
-	'.': {
-		'.': {
-			'.': SyntaxKind.DotDotDotToken,
-			fallback: SyntaxKind.Invalid,
-		},
-		fallback: SyntaxKind.DotToken
-	},
-	'&': {
-		'&': SyntaxKind.AmpersandAmpersandToken,
-		fallback: SyntaxKind.AmpersandToken
-	},
-	'|': {
-		'|': SyntaxKind.PipePipeToken,
-		fallback: SyntaxKind.PipeToken
-	},
-	':': {
-		':': SyntaxKind.ColonColonToken,
-		fallback: SyntaxKind.ColonToken
-	},
-	'*': {
-		'=': SyntaxKind.AsteriskEqualsToken,
-		fallback: SyntaxKind.AsteriskToken
-	},
-	'%': {
-		'=': SyntaxKind.PercentEqualsToken,
-		fallback: SyntaxKind.PercentToken
-	},
-	'-': {
-		'-': SyntaxKind.MinusMinusToken,
-		'=': SyntaxKind.MinusEqualsToken,
-		fallback: SyntaxKind.MinusToken
-	},
-	'+': {
-		'+': SyntaxKind.PlusPlusToken,
-		'=': SyntaxKind.PlusEqualsToken,
-		fallback: SyntaxKind.PlusToken
-	},
-
-	// Whoopsie
-	// Identifier
-	'a': Lexer.prototype.lexIdentifier,
-	'b': Lexer.prototype.lexIdentifier,
-	'c': Lexer.prototype.lexIdentifier,
-	'd': Lexer.prototype.lexIdentifier,
-	'e': Lexer.prototype.lexIdentifier,
-	'f': Lexer.prototype.lexIdentifier,
-	'g': Lexer.prototype.lexIdentifier,
-	'h': Lexer.prototype.lexIdentifier,
-	'i': Lexer.prototype.lexIdentifier,
-	'j': Lexer.prototype.lexIdentifier,
-	'k': Lexer.prototype.lexIdentifier,
-	'l': Lexer.prototype.lexIdentifier,
-	'm': Lexer.prototype.lexIdentifier,
-	'n': Lexer.prototype.lexIdentifier,
-	'o': Lexer.prototype.lexIdentifier,
-	'p': Lexer.prototype.lexIdentifier,
-	'q': Lexer.prototype.lexIdentifier,
-	'r': Lexer.prototype.lexIdentifier,
-	's': Lexer.prototype.lexIdentifier,
-	't': Lexer.prototype.lexIdentifier,
-	'u': Lexer.prototype.lexIdentifier,
-	'v': Lexer.prototype.lexIdentifier,
-	'w': Lexer.prototype.lexIdentifier,
-	'x': Lexer.prototype.lexIdentifier,
-	'y': Lexer.prototype.lexIdentifier,
-	'z': Lexer.prototype.lexIdentifier,
-
-	'A': Lexer.prototype.lexIdentifier,
-	'B': Lexer.prototype.lexIdentifier,
-	'C': Lexer.prototype.lexIdentifier,
-	'D': Lexer.prototype.lexIdentifier,
-	'E': Lexer.prototype.lexIdentifier,
-	'F': Lexer.prototype.lexIdentifier,
-	'G': Lexer.prototype.lexIdentifier,
-	'H': Lexer.prototype.lexIdentifier,
-	'I': Lexer.prototype.lexIdentifier,
-	'J': Lexer.prototype.lexIdentifier,
-	'K': Lexer.prototype.lexIdentifier,
-	'L': Lexer.prototype.lexIdentifier,
-	'M': Lexer.prototype.lexIdentifier,
-	'N': Lexer.prototype.lexIdentifier,
-	'O': Lexer.prototype.lexIdentifier,
-	'P': Lexer.prototype.lexIdentifier,
-	'Q': Lexer.prototype.lexIdentifier,
-	'R': Lexer.prototype.lexIdentifier,
-	'S': Lexer.prototype.lexIdentifier,
-	'T': Lexer.prototype.lexIdentifier,
-	'U': Lexer.prototype.lexIdentifier,
-	'V': Lexer.prototype.lexIdentifier,
-	'W': Lexer.prototype.lexIdentifier,
-	'X': Lexer.prototype.lexIdentifier,
-	'Y': Lexer.prototype.lexIdentifier,
-	'Z': Lexer.prototype.lexIdentifier,
-
-	'_': Lexer.prototype.lexIdentifier,
-
-	// Numbers
-	'0': Lexer.prototype.lexNumber,
-	'1': Lexer.prototype.lexNumber,
-	'2': Lexer.prototype.lexNumber,
-	'3': Lexer.prototype.lexNumber,
-	'4': Lexer.prototype.lexNumber,
-	'5': Lexer.prototype.lexNumber,
-	'6': Lexer.prototype.lexNumber,
-	'7': Lexer.prototype.lexNumber,
-	'8': Lexer.prototype.lexNumber,
-	'9': Lexer.prototype.lexNumber
-};
 
 export class TokenIterator {
 	private tokens: Token[];
