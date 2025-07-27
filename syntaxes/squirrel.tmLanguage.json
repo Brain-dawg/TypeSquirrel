@@ -1017,8 +1017,8 @@
 					"match": "(0|[1-9][0-9]*)"
 				},
 				{
-					"name": "string.quoted.single",
-					"match": "(\\')(?:[^'\\\\]|(\\\\.|\\\\x\\h{1,2}|\\\\u\\h{1,4}|\\\\U\\h{1,8}))(\\')?",
+					"name": "string.quoted.single.squirrel",
+					"match": "(\\')(\\\\x\\h{1,2}|\\\\x\\w?|\\\\u\\h{1,4}|\\\\u\\w?|\\\\U\\h{1,8}|\\\\U\\w?|\\\\.|.)?([^']*)(\\'|\r|\n)",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel"
@@ -1031,13 +1031,12 @@
 							]
 						},
 						"3": {
+							"name": "invalid.illegal.char"
+						},
+						"4": {
 							"name": "punctuation.definition.string.end.squirrel"
 						}
 					}
-				},
-				{
-					"name": "invalid.illegal.char",
-					"match": "\\'[^']*\\'"
 				}
 			]
 		},
