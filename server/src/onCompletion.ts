@@ -292,7 +292,7 @@ function stringCompletion(uri: string, items: CompletionItem[], range: Range, qu
 	const doc = iterator.findMethodDoc();
 	if (!doc) {
 		return true;
-	}	
+	}
 
 	const stringKind = doc[paramCount + 1];
 	if (stringKind === undefined) {

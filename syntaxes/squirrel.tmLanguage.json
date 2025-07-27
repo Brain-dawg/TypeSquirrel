@@ -1045,7 +1045,44 @@
 		"class-declarations": {
 			"patterns": [
 				{
-					"match": "(?<![_A-Za-z])(class)(?:\\s+|\\s*(::)\\s*)((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*)(?:\\s+(extends)\\s+((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*))?\\b",
+					"match": "(?<![_A-Za-z])(?:([_A-Za-z]\\w*)\\s*(=|<-)\\s*)?(class)(?:(?!\\s+[_A-Za-z])|\\s+(extends)(?:\\s+|\\s*(::)\\s*)((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*))\\b",
+					"captures": {
+						"0": {
+							"name": "meta.class.squirrel"
+						},
+						"1": {
+							"name": "entity.name.type.class.squirrel"
+						},
+						"2": {
+							"name": "keyword.operator.assignment.squirrel"
+						},
+						"3": {
+							"name": "storage.type.class.squirrel"
+						},
+						"4": {
+							"name": "storage.modifier.extends.squirrel"
+						},
+						"5": {
+							"name": "storage.modifier.global.squirrel"
+						},
+						"6": {
+							"patterns": [
+								{
+									"name": "punctuation.accessor.squirrel",
+									"match": "\\."
+								},
+								{
+									"include": "#identifiers"
+								}
+							]
+						},
+						"7": {
+							"name": "entity.other.inherited-class.squirrel"
+						}
+					}
+				},
+				{
+					"match": "(?<![_A-Za-z])(class)(?:\\s+|\\s*(::)\\s*)((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*)(?:\\s+(extends)(?:\\s+|\\s*(::)\\s*)((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*))?\\b",
 					"captures": {
 						"1": {
 							"name": "storage.type.class.squirrel"
@@ -1060,8 +1097,7 @@
 									"match": "\\."
 								},
 								{
-									"name": "variable.other.squirrel",
-									"match": "[_A-Za-z]\\w*"
+									"include": "#identifiers"
 								}
 							]
 						},
@@ -1072,50 +1108,20 @@
 							"name": "storage.modifier.extends.squirrel"
 						},
 						"6": {
-							"patterns": [
-								{
-									"name": "punctuation.accessor.squirrel",
-									"match": "\\."
-								},
-								{
-									"name": "variable.other.squirrel",
-									"match": "[_A-Za-z]\\w*"
-								}
-							]
+							"name": "storage.modifier.global.squirrel"
 						},
 						"7": {
-							"name": "entity.other.inherited-class.squirrel"
-						}
-					}
-				},
-				{
-					"match": "(?<![_A-Za-z])([_A-Za-z]\\w*)\\s*(?:=|<-)\\s*(class)(?:\\s+(extends)\\s+((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*))?\\b",
-					"captures": {
-						"0": {
-							"name": "meta.class.squirrel"
-						},
-						"1": {
-							"name": "entity.name.type.class.squirrel"
-						},
-						"2": {
-							"name": "storage.type.class.squirrel"
-						},
-						"3": {
-							"name": "storage.modifier.extends.squirrel"
-						},
-						"4": {
 							"patterns": [
 								{
 									"name": "punctuation.accessor.squirrel",
 									"match": "\\."
 								},
 								{
-									"name": "variable.other.squirrel",
-									"match": "[_A-Za-z]\\w*"
+									"include": "#identifiers"
 								}
 							]
 						},
-						"5": {
+						"8": {
 							"name": "entity.other.inherited-class.squirrel"
 						}
 					}
@@ -1172,8 +1178,7 @@
 									"match": "::"
 								},
 								{
-									"name": "variable.other.squirrel",
-									"match": "[_A-Za-z]\\w*"
+									"include": "#identifiers"
 								}
 							]
 						},
@@ -1259,44 +1264,45 @@
 		"punctuation": {
 			"patterns": [
 				{
-					"match": "\\.\\.\\.",
-					"name": "punctuation.ellipsis.squirrel"
+					"name": "punctuation.ellipsis.squirrel",
+					"match": "\\.\\.\\."
 				},
 				{
-					"match": "\\.\\.",
-					"name": "invalid.illegal.operator.squirrel"
+					"name": "invalid.illegal.operator.squirrel",
+					"match": "\\.\\."
 				},
 				{
-					"match": ",",
-					"name": "punctuation.separator.comma.squirrel"
+					"name": "punctuation.separator.comma.squirrel",
+					"match": ","
 				},
 				{
-					"match": "\\.",
-					"name": "punctuation.accessor.squirrel"
+					"name": "punctuation.accessor.squirrel",
+					"match": "\\."
 				},
 				{
-					"match": ";",
-					"name": "punctuation.terminator.squirrel"
+					"name": "punctuation.terminator.squirrel",
+					"match": ";"
 				},
 				{
-					"match": ":",
-					"name": "punctuation.colon.squirrel"
+					"name": "punctuation.colon.squirrel",
+					"match": ":"
 				}
 			]
 		},
 		"identifiers": {
 			"patterns": [
 				{
-					"match": "(?<![_A-Za-z])[_A-Z][_A-Z0-9]*\\b",
-					"name": "variable.other.constant.squirrel"
+					"name": "variable.other.constant.squirrel",
+					"match": "(?<![_A-Za-z])[_A-Z][_A-Z0-9]*\\b"
 				},
 				{
-					"match": "(?<![_A-Za-z])(_charsize_|_floatsize_|_intsize_|_version_|_versionnumber_|self|__vrefs|__vname|activator|caller|kHoliday_None|kHoliday_TFBirthday|kHoliday_Halloween|kHoliday_Christmas|kHoliday_CommunityUpdate|kHoliday_EOTL|kHoliday_Valentines|kHoliday_MeetThePyro|kHoliday_FullMoon|kHoliday_HalloweenOrFullMoon|kHoliday_HalloweenOrFullMoonOrValentines|kHoliday_AprilFools|kHoliday_Soldier|kHoliday_Summer|kHolidayCount|kRenderFxNone|kRenderFxPulseSlow|kRenderFxPulseFast|kRenderFxPulseSlowWide|kRenderFxPulseFastWide|kRenderFxFadeSlow|kRenderFxFadeFast|kRenderFxSolidSlow|kRenderFxSolidFast|kRenderFxStrobeSlow|kRenderFxStrobeFast|kRenderFxStrobeFaster|kRenderFxFlickerSlow|kRenderFxFlickerFast|kRenderFxNoDissipation|kRenderFxDistort|kRenderFxHologram|kRenderFxExplode|kRenderFxGlowShell|kRenderFxClampMinScale|kRenderFxEnvRain|kRenderFxEnvSnow|kRenderFxSpotlight|kRenderFxRagdoll|kRenderFxPulseFastWider|kRenderFxMax|kRenderNormal|kRenderTransColor|kRenderTransTexture|kRenderGlow|kRenderTransAlpha|kRenderTransAdd|kRenderEnvironmental|kRenderTransAddFrameBlend|kRenderTransAlphaAdd|kRenderWorldGlow|kRenderNone|kRenderModeCount|Zero|Epsilon|GoldenRatio|One|Sqrt2|Sqrt3|E|Pi|Tau|ConstantNamingConvention)\\b",
-					"name": "variable.other.constant.squirrel"
+					"name": "variable.other.constant.squirrel",
+					"match": "(?<![_A-Za-z])(_charsize_|_floatsize_|_intsize_|_version_|_versionnumber_|self|__vrefs|__vname|activator|caller|kHoliday_None|kHoliday_TFBirthday|kHoliday_Halloween|kHoliday_Christmas|kHoliday_CommunityUpdate|kHoliday_EOTL|kHoliday_Valentines|kHoliday_MeetThePyro|kHoliday_FullMoon|kHoliday_HalloweenOrFullMoon|kHoliday_HalloweenOrFullMoonOrValentines|kHoliday_AprilFools|kHoliday_Soldier|kHoliday_Summer|kHolidayCount|kRenderFxNone|kRenderFxPulseSlow|kRenderFxPulseFast|kRenderFxPulseSlowWide|kRenderFxPulseFastWide|kRenderFxFadeSlow|kRenderFxFadeFast|kRenderFxSolidSlow|kRenderFxSolidFast|kRenderFxStrobeSlow|kRenderFxStrobeFast|kRenderFxStrobeFaster|kRenderFxFlickerSlow|kRenderFxFlickerFast|kRenderFxNoDissipation|kRenderFxDistort|kRenderFxHologram|kRenderFxExplode|kRenderFxGlowShell|kRenderFxClampMinScale|kRenderFxEnvRain|kRenderFxEnvSnow|kRenderFxSpotlight|kRenderFxRagdoll|kRenderFxPulseFastWider|kRenderFxMax|kRenderNormal|kRenderTransColor|kRenderTransTexture|kRenderGlow|kRenderTransAlpha|kRenderTransAdd|kRenderEnvironmental|kRenderTransAddFrameBlend|kRenderTransAlphaAdd|kRenderWorldGlow|kRenderNone|kRenderModeCount|Zero|Epsilon|GoldenRatio|One|Sqrt2|Sqrt3|E|Pi|Tau|ConstantNamingConvention)\\b"
 				},
 				{
-					"match": "(?<![_A-Za-z])[_A-Za-z]\\w*\\b",
-					"name": "variable.other.squirrel"
+					
+					"name": "variable.other.squirrel",
+					"match": "(?<![_A-Za-z])[_A-Za-z]\\w*\\b"
 				}
 			]
 		}
