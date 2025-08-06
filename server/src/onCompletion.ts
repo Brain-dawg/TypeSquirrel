@@ -1,7 +1,7 @@
-import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, Position, TextDocumentPositionParams, TextEdit } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, TextEdit } from 'vscode-languageserver';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { documents, getDocumentSettings, documentInfo } from './server';
-import { Token, TokenIterator, SyntaxKind, globals, Docs, StringKind, Lexer, isTokenAString, StringToken } from 'squirrel';
+import { Token, TokenIterator, String, SyntaxKind, globals, Docs, StringKind, Lexer, isTokenAString, StringToken } from 'squirrel';
 
 const enum DocKind {
 	Keywords,
@@ -37,14 +37,19 @@ function convertOffsetsToRange(document: TextDocument, start: number, end: numbe
 	};
 }
 
-function getQuote(document: TextDocument, token: StringToken): string {
-															  // EG   |\\"|
-	return document.getText(convertOffsetsToRange(document, token.start, token.sourcePositions[0]));
+function getQuote(document: TextDocument, token: StringToken<String>): string {
+														   // EG   |\\"|
+	const quote = document.getText(convertOffsetsToRange(document, token.start, token.sourcePositions[0]));
+	// Horrendous hack to make the embedded squirrel work by converting quotes back to backticks
+	if (document.uri.startsWith("embedded-squirrel")) {
+		return quote.replaceAll('"', '`');
+	}
+	return quote;
 }
 
 interface CompletionCache {
 	searchResult: {
-		token: Token | null;
+		token: Token<SyntaxKind> | null;
 		index: number;
 		lexer: Lexer;
 	}
@@ -105,9 +110,8 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 			if (triggerChar === '@') {
 				return items;
 			}
-
-																		
-			const quote = getQuote(document, token as StringToken); 
+												
+			const quote = getQuote(document, token as StringToken<typeof token.kind>); 
 			const range = convertOffsetsToRange(document, token.start, token.end);
 			const iterator = new TokenIterator(lexer.getTokens(), result.index - 1);
 
@@ -175,7 +179,7 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 		// Or we've possibly done table/class accessing with []
 
 		const lastToken = iterator.next();
-		if (!lastToken || lastToken.kind !== SyntaxKind.CloseRoundToken && lastToken.kind !== SyntaxKind.RightSquareToken) {
+		if (!lastToken || lastToken.kind !== SyntaxKind.CloseParenthesisToken && lastToken.kind !== SyntaxKind.CloseBracketToken) {
 			addCompletionItems(document.uri, items, DocKind.InstancesMethods, CompletionItemKind.Method);
 			addCompletionItems(document.uri, items, DocKind.InstancesVariables, CompletionItemKind.EnumMember);
 			cache.modifyRange = convertOffsetsToRange(document, dotRange.start, dotRange.end);
@@ -269,7 +273,7 @@ function stringCompletion(uri: string, items: CompletionItem[], range: Range, qu
 
 	const token = iterator.previous();
 	if (token.kind !== SyntaxKind.CommaToken) {
-		if (token.kind !== SyntaxKind.OpenRoundToken) {
+		if (token.kind !== SyntaxKind.OpenParenthesisToken) {
 			return false;
 		}
 
@@ -313,7 +317,7 @@ function declarationKind(iterator: TokenIterator): SyntaxKind | null {
 		return token.kind;
 	}
 	
-	if (token.kind !== SyntaxKind.IdentifierToken || !iterator.hasPrevious()) {
+	if (token.kind !== SyntaxKind.Identifier || !iterator.hasPrevious()) {
 		return null;
 	}
 
@@ -333,19 +337,19 @@ function readParamCount(iterator: TokenIterator): number {
 	while (iterator.hasPrevious()) {
 		const token = iterator.previous();
 		switch (token.kind) {
-		case SyntaxKind.CloseRoundToken:
-		case SyntaxKind.CloseCurlyToken:
-		case SyntaxKind.RightSquareToken:
+		case SyntaxKind.CloseParenthesisToken:
+		case SyntaxKind.CloseBraceToken:
+		case SyntaxKind.CloseBracketToken:
 			depth++;
 			break;
-		case SyntaxKind.OpenCurlyToken:
-		case SyntaxKind.OpenSquareToken:
+		case SyntaxKind.OpenBraceToken:
+		case SyntaxKind.OpenBracketToken:
 			depth--;
 			if (depth === 0) {
 				return -1;
 			}
 			break;
-		case SyntaxKind.OpenRoundToken:
+		case SyntaxKind.OpenParenthesisToken:
 			depth--;
 			if (depth === 0) {
 				return paramCount;
@@ -371,7 +375,7 @@ function getDotRange(iterator: TokenIterator, offset: number): { start: number, 
 	if (token.kind === SyntaxKind.DotToken) {
 		return { start: token.start, end: offset };
 	}
-	if (token.kind !== SyntaxKind.IdentifierToken) {
+	if (token.kind !== SyntaxKind.Identifier) {
 		return null;
 	}
 
@@ -436,7 +440,7 @@ function functionParanthesis(document: TextDocument): boolean {
 
 	let token = iterator.previous();
 
-	if (token.kind === SyntaxKind.IdentifierToken || token.kind === SyntaxKind.FunctionKeyword) {
+	if (token.kind === SyntaxKind.Identifier || token.kind === SyntaxKind.FunctionKeyword) {
 		if (!iterator.hasPrevious()) {
 			return false;
 		}
