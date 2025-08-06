@@ -136,7 +136,7 @@
 			"patterns": [
 				{
 					"begin": "(?i)(?<=\\x1brunscriptcode\\x1b)(?!\\x1b)",
-					"end": "(?=\"|\r|\n|\\x1b)",
+					"end": "(?=\"|\n|\\x1b)",
 					"patterns": [
 						{
 							"include": "#comments"
@@ -160,7 +160,7 @@
 				},
 				{
 					"begin": "(?i)(?<=,runscriptcode,)(?!,)",
-					"end": "(?=\"|\r|\n|,)",
+					"end": "(?=\"|\n|,)",
 					"patterns": [
 						{
 							"include": "#comments"
@@ -184,7 +184,7 @@
 				},
 				{
 					"begin": "(?i)(?<=:runscriptcode:)(?!:)",
-					"end": "(?=\"|\r|\n|:|,|\\x1b)",
+					"end": "(?=\"|\n|:|,|\\x1b)",
 					"patterns": [
 						{
 							"include": "#comments"
@@ -239,13 +239,43 @@
 		"strings": {
 			"patterns": [
 				{
+					"name": "string.regexp.squirrel",
+					"begin": "(?<=regexp\\s*\\(\\s*)\"",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.begin.squirrel"
+						}
+					},
+					"end": "\"|\n",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.end.squirrel"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#regexp"
+						}
+					]
+				},
+				{
+					"begin": "(?<=regexp\\s*\\(\\s*)(@\")",
+					"name": "string.regexp.squirrel",
+					"end": "\"(?!\")",
+					"patterns": [
+						{
+							"include": "#verbatim-regexp"
+						}
+					]
+				},
+				{
 					"begin": "(?<=compilestring\\s*\\(\\s*(?:format\\s*\\(\\s*)?)(\")",
 					"beginCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\"|\r|\n",
+					"end": "\"|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -289,7 +319,7 @@
 						{
 							"name": "string.quoted.double",
 							"begin": "\"\"",
-							"end": "\"\""
+							"end": "\"\"|(?=\"[^\"])"
 						},
 						{
 							"include": "#format-specifiers"
@@ -300,7 +330,7 @@
 					]
 				},
 				{
-					"match": "(?i)(?<=\"callscriptfunction\"\\s*,?\\s*)(\")([_A-Za-z]\\w*)(\")",
+					"match": "(?<=AddThinkToEnt\\s*\\(\\s*\\S.*)(\")(.*?)(\")",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -314,13 +344,13 @@
 					}
 				},
 				{
-					"match": "(?i)(?<=\"callscriptfunction\"\\s*,?\\s*)(\")(.*)(\")",
+					"match": "(?i)(?<=\"callscriptfunction\"\\s*,?\\s*)(\")(.*?)(\")",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						},
 						"2": {
-							"name": "invalid.illegal.input"
+							"name": "entity.name.function"
 						},
 						"3": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -334,7 +364,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\"|\r|\n",
+					"end": "\"|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -381,7 +411,7 @@
 						{
 							"name": "string.quoted.double",
 							"begin": "\"\"",
-							"end": "\"\""
+							"end": "\"\"|(?=\"[^\"])"
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -401,7 +431,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\"|\r|\n",
+					"end": "\"|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -456,7 +486,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\\\\\"|\r|\n",
+					"end": "\\\\\"|\n|(?=\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -511,7 +541,7 @@
 					]
 				},
 				{
-					"match": "(?i)(?<=\\\\\"callscriptfunction\\\\\"\\s*,?\\s*)(\\\\\")(.*)(\\\\\")",
+					"match": "(?<=AddThinkToEnt\\s*\\(\\s*\\S.*)(\\\\\")(.*?)(\\\\\")",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -525,13 +555,13 @@
 					}
 				},
 				{
-					"match": "(?i)(?<=\\\\\"callscriptfunction\\\\\"\\s*,?\\s*)(\\\\\")(.*)(\\\\\")",
+					"match": "(?i)(?<=\\\\\"callscriptfunction\\\\\"\\s*,?\\s*)(\\\\\")(.*+)(\\\\\")",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						},
 						"2": {
-							"name": "invalid.illegal.input"
+							"name": "entity.name.function"
 						},
 						"3": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -545,7 +575,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "\\\\\"|\r|\n",
+					"end": "\\\\\"|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -591,8 +621,8 @@
 						},
 						{
 							"name": "string.quoted.double",
-							"begin": "\\\\\"{2}",
-							"end": "\\\\\"{2}"
+							"begin": "\\\\\"\\\\\"",
+							"end": "\\\\\"\\\\\"|(?=\\\\\"[^\\\\\"])"
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -613,7 +643,7 @@
 							"name": "punctuation.definition.string.begin.squirrel"
 						}
 					},
-					"end": "\\\\\"|\r|\n",
+					"end": "\\\\\"|\n",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel"
@@ -657,13 +687,43 @@
 		"strings-runscriptcode": {
 			"patterns": [
 				{
+					"name": "string.regexp.squirrel",
+					"begin": "(?<=regexp\\s*\\(\\s*)`",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.begin.squirrel"
+						}
+					},
+					"end": "`|\n",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.string.end.squirrel"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#regexp-runscriptcode"
+						}
+					]
+				},
+				{
+					"begin": "(?<=regexp\\s*\\(\\s*)(@`)",
+					"name": "string.regexp.squirrel",
+					"end": "`(?!`)",
+					"patterns": [
+						{
+							"include": "#verbatim-regexp-runscriptcode"
+						}
+					]
+				},
+				{
 					"begin": "(?<=compilestring\\s*\\(\\s*(?:format\\s*\\(\\s*)?)`",
 					"beginCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "`|\r|\n",
+					"end": "`|\n|(?=\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -694,7 +754,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "`(?!`)",
+					"end": "`(?!`)|(?=\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -707,7 +767,7 @@
 						{
 							"name": "string.quoted.double",
 							"begin": "``",
-							"end": "``"
+							"end": "``|(?=`[^`])"
 						},
 						{
 							"include": "#format-specifiers"
@@ -718,7 +778,7 @@
 					]
 				},
 				{
-					"match": "(?i)(?<=`callscriptfunction`\\s*,?\\s*)(`)([_A-Za-z]\\w*)(`)",
+					"match": "(?<=AddThinkToEnt\\s*\\(\\s*\\S.*)(`)(.*?)(`)",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
@@ -732,13 +792,13 @@
 					}
 				},
 				{
-					"match": "(?i)(?<=`callscriptfunction`\\s*,?\\s*)(`)(.*)(`)",
+					"match": "(?i)(?<=`callscriptfunction`\\s*,?\\s*)(`)(.*?)(`)",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						},
 						"2": {
-							"name": "invalid.illegal.input"
+							"name": "entity.name.function"
 						},
 						"3": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -752,7 +812,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "`|\r|\n",
+					"end": "`|\n|(?=\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -786,7 +846,7 @@
 							"name": "punctuation.definition.string.begin.squirrel string.quoted.double"
 						}
 					},
-					"end": "`(?!`)",
+					"end": "`(?!`)|(?=\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel string.quoted.double"
@@ -799,7 +859,7 @@
 						{
 							"name": "string.quoted.double",
 							"begin": "``",
-							"end": "``"
+							"end": "``|(?=`[^`])"
 						},
 						{
 							"include": "#strings-runscriptcode"
@@ -820,7 +880,7 @@
 							"name": "punctuation.definition.string.begin.squirrel"
 						}
 					},
-					"end": "`|\r|\n",
+					"end": "`|\n|(?=\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel"
@@ -843,7 +903,7 @@
 							"name": "punctuation.definition.string.begin.squirrel"
 						}
 					},
-					"end": "`(?!`)",
+					"end": "`(?!`)|(?=\")",
 					"endCaptures": {
 						"0": {
 							"name": "punctuation.definition.string.end.squirrel"
@@ -858,6 +918,376 @@
 							"include": "#format-specifiers"
 						}
 					]
+				}
+			]
+		},
+		"regexp": {
+			"patterns": [
+				{
+					"name": "keyword.control.anchor.regexp",
+					"match": "\\\\\\\\[bB]|\\^|\\$"
+				},
+				{
+					"name": "keyword.operator.or.regexp",
+					"match": "\\|"
+				},
+				{
+					"name": "keyword.operator.quantifier.regexp",
+					"match": "[?+*]|\\{(\\d+,\\d+|\\d+,|\\d+)\\}"
+				},
+				{
+					"name": "invalid.illegal.group.regexp",
+					"match": "\\[\\]|\\(\\)"
+				},
+				{
+					"name": "meta.group.regexp",
+					"begin": "\\((\\?:)?",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.definition.group.regexp"
+						},
+						"1": {
+							"name": "punctuation.definition.group.no-capture.regexp"
+						}
+					},
+					"end": "\\)|(?=\"|\n)",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.group.regexp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#regexp"
+						}
+					]
+				},
+				{
+					"name": "constant.other.character-class.set.regexp",
+					"begin": "(\\[)(\\^)?",
+					"beginCaptures": {
+						"1": {
+							"name": "punctuation.definition.character-class.regexp"
+						},
+						"2": {
+							"name": "keyword.operator.negation.regexp"
+						}
+					},
+					"end": "\\]|(?=\"|\n)",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.character-class.regexp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#regexp-characters"
+						},
+						{
+							"name": "constant.other.character-class.range.regexp",
+							"match": "-"
+						}
+					]
+				},
+				{
+					"name": "invalid.illegal.character.regexp",
+					"match": "\\[|\\]|\\(|\\)|\\{|\\}"
+				},
+				{
+					"include": "#regexp-characters"
+				}
+			]
+		},
+		"regexp-characters": {
+			"patterns": [
+				{
+					"name": "constant.character.numeric.regexp",
+					"match": "\\\\\\\\[luaAwWsSdDxXcCpP]|\\."
+				},
+				{
+					"name": "constant.character.escape.backslash.regexp",
+					"match": "\\\\\\\\(?:\\\\[0tabnrvf\"\\\\'`]|[^\"\\\\])"
+				},
+				{
+					"include": "#string-escape-sequences"
+				}
+			]
+		},
+		"verbatim-regexp": {
+			"patterns": [
+				{
+					"name": "keyword.control.anchor.regexp",
+					"match": "\\\\[bB]|\\^|\\$"
+				},
+				{
+					"name": "keyword.operator.or.regexp",
+					"match": "\\|"
+				},
+				{
+					"name": "keyword.operator.quantifier.regexp",
+					"match": "[?+*]|\\{(\\d+,\\d+|\\d+,|\\d+)\\}"
+				},
+				{
+					"name": "invalid.illegal.group.regexp",
+					"match": "\\[\\]|\\(\\)"
+				},
+				{
+					"name": "meta.group.regexp",
+					"begin": "\\((\\?:)?",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.definition.group.regexp"
+						},
+						"1": {
+							"name": "punctuation.definition.group.no-capture.regexp"
+						}
+					},
+					"end": "\\)|(?=\"[^\"])",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.group.regexp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#regexp"
+						}
+					]
+				},
+				{
+					"name": "constant.other.character-class.set.regexp",
+					"begin": "(\\[)(\\^)?",
+					"beginCaptures": {
+						"1": {
+							"name": "punctuation.definition.character-class.regexp"
+						},
+						"2": {
+							"name": "keyword.operator.negation.regexp"
+						}
+					},
+					"end": "\\]|(?=\"[^\"])",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.character-class.regexp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#verbatim-regexp-characters"
+						},
+						{
+							"name": "constant.other.character-class.range.regexp",
+							"match": "-"
+						}
+					]
+				},
+				{
+					"name": "invalid.illegal.character.regexp",
+					"match": "\\[|\\]|\\(|\\)|\\{|\\}"
+				},
+				{
+					"include": "#verbatim-regexp-characters"
+				}
+			]
+		},
+		"verbatim-regexp-characters": {
+			"patterns": [
+				{
+					"name": "constant.character.numeric.regexp",
+					"match": "\\\\[luaAwWsSdDxXcCpP]|\\."
+				},
+				{
+					"name": "constant.character.escape.backslash.regexp",
+					"match": "\\\\[^\"]"
+				},
+				{
+					"name": "constant.character.escape.regexp",
+					"match": "\"\""
+				}
+			]
+		},
+		"regexp-runscriptcode": {
+			"patterns": [
+				{
+					"name": "keyword.control.anchor.regexp",
+					"match": "\\\\\\\\[bB]|\\^|\\$"
+				},
+				{
+					"name": "keyword.operator.or.regexp",
+					"match": "\\|"
+				},
+				{
+					"name": "keyword.operator.quantifier.regexp",
+					"match": "[?+*]|\\{(\\d+,\\d+|\\d+,|\\d+)\\}"
+				},
+				{
+					"name": "invalid.illegal.group.regexp",
+					"match": "\\[\\]|\\(\\)"
+				},
+				{
+					"name": "meta.group.regexp",
+					"begin": "\\((\\?:)?",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.definition.group.regexp"
+						},
+						"1": {
+							"name": "punctuation.definition.group.no-capture.regexp"
+						}
+					},
+					"end": "\\)|(?=`|\n)",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.group.regexp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#regexp"
+						}
+					]
+				},
+				{
+					"name": "constant.other.character-class.set.regexp",
+					"begin": "(\\[)(\\^)?",
+					"beginCaptures": {
+						"1": {
+							"name": "punctuation.definition.character-class.regexp"
+						},
+						"2": {
+							"name": "keyword.operator.negation.regexp"
+						}
+					},
+					"end": "\\]|(?=`|\n)",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.character-class.regexp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#regexp-characters-runscriptcode"
+						},
+						{
+							"name": "constant.other.character-class.range.regexp",
+							"match": "-"
+						}
+					]
+				},
+				{
+					"name": "invalid.illegal.character.regexp",
+					"match": "\\[|\\]|\\(|\\)|\\{|\\}"
+				},
+				{
+					"include": "#regexp-characters-runscriptcode"
+				}
+			]
+		},
+		"regexp-characters-runscriptcode": {
+			"patterns": [
+				{
+					"name": "constant.character.numeric.regexp",
+					"match": "\\\\\\\\[luaAwWsSdDxXcCpP]|\\."
+				},
+				{
+					"name": "constant.character.escape.backslash.regexp",
+					"match": "\\\\\\\\(?:\\\\[0tabnrvf`\\\\'`]|[^`\\\\])"
+				},
+				{
+					"include": "#string-escape-sequences"
+				}
+			]
+		},
+		"verbatim-regexp-runscriptcode": {
+			"patterns": [
+				{
+					"name": "keyword.control.anchor.regexp",
+					"match": "\\\\[bB]|\\^|\\$"
+				},
+				{
+					"name": "keyword.operator.or.regexp",
+					"match": "\\|"
+				},
+				{
+					"name": "keyword.operator.quantifier.regexp",
+					"match": "[?+*]|\\{(\\d+,\\d+|\\d+,|\\d+)\\}"
+				},
+				{
+					"name": "invalid.illegal.group.regexp",
+					"match": "\\[\\]|\\(\\)"
+				},
+				{
+					"name": "meta.group.regexp",
+					"begin": "\\((\\?:)?",
+					"beginCaptures": {
+						"0": {
+							"name": "punctuation.definition.group.regexp"
+						},
+						"1": {
+							"name": "punctuation.definition.group.no-capture.regexp"
+						}
+					},
+					"end": "\\)|(?=`[^`])",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.group.regexp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#regexp"
+						}
+					]
+				},
+				{
+					"name": "constant.other.character-class.set.regexp",
+					"begin": "(\\[)(\\^)?",
+					"beginCaptures": {
+						"1": {
+							"name": "punctuation.definition.character-class.regexp"
+						},
+						"2": {
+							"name": "keyword.operator.negation.regexp"
+						}
+					},
+					"end": "\\]|(?=`[^`])",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.character-class.regexp"
+						}
+					},
+					"patterns": [
+						{
+							"include": "#verbatim-regexp-characters-runscriptcode"
+						},
+						{
+							"name": "constant.other.character-class.range.regexp",
+							"match": "-"
+						}
+					]
+				},
+				{
+					"name": "invalid.illegal.character.regexp",
+					"match": "\\[|\\]|\\(|\\)|\\{|\\}"
+				},
+				{
+					"include": "#verbatim-regexp-characters-runscriptcode"
+				}
+			]
+		},
+		"verbatim-regexp-characters-runscriptcode": {
+			"patterns": [
+				{
+					"name": "constant.character.numeric.regexp",
+					"match": "\\\\[luaAwWsSdDxXcCpP]|\\."
+				},
+				{
+					"name": "constant.character.escape.backslash.regexp",
+					"match": "\\\\[^`]"
+				},
+				{
+					"name": "constant.character.escape.regexp",
+					"match": "``"
 				}
 			]
 		},
@@ -966,11 +1396,17 @@
 				},
 				{
 					"name": "constant.numeric.integer.octal.squirrel",
-					"match": "0[0-7]+(?!\\d)"
-				},
-				{
-					"name": "invalid.illegal.integer.octal.squirrel",
-					"match": "0[0-7]+[0-9]+"
+					"match": "0[0-7]+[0-9]+",
+					"captures": {
+						"0": {
+							"patterns": [
+								{
+									"name": "invalid.illegal.integer.octal.squirrel",
+									"match": "8|9"
+								}
+							]
+						}
+					}
 				},
 				{
 					"name": "constant.numeric.float.squirrel",
@@ -996,11 +1432,7 @@
 				},
 				{
 					"name": "constant.numeric.integer.hexadecimal.squirrel",
-					"match": "0[xX][\\h]*\\b"
-				},
-				{
-					"name": "constant.numeric.integer.hexadecimal.squirrel",
-					"match": "0[xX]([\\w]+)\\b",
+					"match": "0[xX](\\w*)\\b",
 					"captures": {
 						"1": {
 							"patterns": [
@@ -1018,7 +1450,7 @@
 				},
 				{
 					"name": "string.quoted.single.squirrel",
-					"match": "(\\')(\\\\x\\h{1,2}|\\\\x\\w?|\\\\u\\h{1,4}|\\\\u\\w?|\\\\U\\h{1,8}|\\\\U\\w?|\\\\.|.)?([^']*)(\\'|\r|\n)",
+					"match": "(\\')(\\\\x\\h{1,2}|\\\\x\\w?|\\\\u\\h{1,4}|\\\\u\\w?|\\\\U\\h{1,8}|\\\\U\\w?|\\\\.|.)?([^']*)(\\'|\n)",
 					"captures": {
 						"1": {
 							"name": "punctuation.definition.string.begin.squirrel"
@@ -1165,10 +1597,10 @@
 			"patterns": [
 				{
 					"name": "storage.type.function.squirrel",
-					"match": "(\\bfunction\\b|\\bconstructor\\b|@)"
+					"match": "(?<![_A-Za-z])function\\b|@"
 				},
 				{
-					"match": "(?<=function\\s*)\\b((?:[_A-Za-z]\\w*::)*)([_A-Za-z]\\w*)\\b",
+					"match": "(?<=[^_A-Za-z]function\\s*)\\b((?:[_A-Za-z]\\w*::)*)([_A-Za-z]\\w*)\\b",
 					"captures": {
 						"1": {
 							"patterns": [
@@ -1192,7 +1624,7 @@
 				},
 				{
 					"name": "entity.name.function.squirrel",
-					"match": "(?<![_A-Za-z])[_A-Za-z][\\w]*\\b(?=\\s*\\()"
+					"match": "(?<![_A-Za-z])[_A-Za-z]\\w*\\b(?=\\s*\\()"
 				},
 				{
 					"name": "entity.name.function.squirrel",
