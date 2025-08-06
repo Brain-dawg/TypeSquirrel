@@ -1,610 +1,633 @@
-import { Token, SyntaxKind, tokenKindToString, Error, Expression, BinaryExpression, StringLiteral, NumericLiteral, BooleanLiteral, NullLiteral, IdentifierExpression, ConstDeclarationStatement, ScalarLiteral, LocalDeclarationStatement, LocalDeclaration, BlockStatement, Statement, CommaExpression } from "./squirrel";
 import { Lexer } from "./lexer";
+import { Block, DiagnosticSeverity, DoStatement, EmptyStatement, Expression, ForEachStatement, ForStatement, getBinaryOperatorPrecedence, Identifier, IfStatement, isTokenAKeyword, isTokenAValidIdentifier, LocalStatement, MissingToken, Node, NodeArray, OperatorPrecedence, PrimaryExpression, Statement, SyntaxKind, Token, TokenNode, TokenToString, VScriptDiagnostic, WhileStatement } from "./types";
+import { createBinaryExpression, createBlockStatement, createConditionalExpression, createDoStatement, createEmptyStatement, createForEachStatement, createForStatement, createIdentifier, createIfStatement, createMissingNode, createNodeArray, createNodeFromToken, createTokenNode, createWhileStatement, isNodeMissing } from "./nodeFunctions";
+
+
+const enum ParsingContext {
+	SourceElements         = 1 << 0,  // Elements in source file
+	BlockStatements        = 1 << 1,  // Statements in block
+	SwitchClauseStatements = 1 << 3,  // Statements in switch clause
+	SwitchClauses          = 1 << 2,  // Clauses in switch statement
+	ClassMembers           = 1 << 4,  // Members in class declaration
+	EnumMembers            = 1 << 5,  // Members in enum declaration
+	TableLiteralMembers    = 1 << 6,  // Members in object literal
+	ArrayLiteralMembers    = 1 << 7,  // Members in array literal
+	VariableDeclarations   = 1 << 8,  // Variable declarations in local statement
+	Parameters             = 1 << 9,  // Parameters in parameter list
+	ArgumentExpressions    = 1 << 10, // Function call arguments, pretty much the same as array literal
+	Count                             // +1 than the last entry, used for loop iteration
+}
 
 export class Parser {
 	private readonly lexer: Lexer;
 
-	private currentToken: Token;
-	private prevToken?: Token;
+	private parsingContext: number;
 
-	private readonly errors: Error[];
+	private currentToken: Token<SyntaxKind>;
+	private hasPrecedingLineBreak: boolean;
+
+	private readonly diagnostics: VScriptDiagnostic[];
 
 	constructor(lexer: Lexer) {
 		this.lexer = lexer;
 
-		this.currentToken = lexer.lex();
+		this.parsingContext = 0.0;
 
-		this.errors = [];
+		this.currentToken = lexer.lex();
+		this.hasPrecedingLineBreak = false;
+
+		this.diagnostics = [];
 	}
 
-	public getErrors(): Error[] {
-		return this.errors;
+	private diagnosticAtCurrentToken(message: string, severity: DiagnosticSeverity = DiagnosticSeverity.Error): VScriptDiagnostic | undefined {
+		return this.diagnostic(message, this.token().start, this.token().end, severity);
+	}
+
+	private diagnostic(message: string, start: number, end: number, severity: DiagnosticSeverity = DiagnosticSeverity.Error): VScriptDiagnostic | undefined {
+		let result: VScriptDiagnostic | undefined;
+		const length = this.diagnostics.length;
+		if (length === 0 || this.diagnostics[length - 1].start !== start) {
+			result = {
+				start,
+				end,
+				message,
+				severity
+			};
+			this.diagnostics.push(result);
+		}
+		return result;
+	}
+
+	public getDiagnostics(): VScriptDiagnostic[] {
+		return this.diagnostics;
 	}
 
 	private next(): SyntaxKind {
 		this.currentToken = this.lexer.lex();
-		this.prevToken = this.lexer.getPreviousToken();
+		this.hasPrecedingLineBreak = this.lexer.getPreviousToken()!.kind === SyntaxKind.LineFeedToken;
 		return this.currentToken.kind;
 	}
 
-	private token(): Token {
+	private token(): Token<SyntaxKind> {
 		return this.currentToken;
 	}
 
-	public parse(): BlockStatement {
-		const statements: Statement[] = [];
-		while (this.token().kind !== SyntaxKind.EOF) {
-			const statement = this.statement();
-			if (statement) {	
-				statements.push(statement);
-			}
-			if (this.prevToken!.kind !== SyntaxKind.CloseCurlyToken && this.prevToken!.kind !== SyntaxKind.SemicolonToken) {
-				this.optionalSemicolon();
-			}
-		}
-		return {
-			kind: SyntaxKind.BlockStatement,
-			start: 0,
-			end: this.token().end,
-			body: statements
-		};
+	private parseTokenNode<T extends Node>(): T {
+		return createNodeFromToken(this.token()) as T;
 	}
 
-	private statements(): BlockStatement {
-		const statements: Statement[] = [];
-		while (this.token().kind !== SyntaxKind.CloseCurlyToken && this.token().kind !== SyntaxKind.DefaultKeyword && this.token().kind !== SyntaxKind.CaseKeyword) {
-			const statement = this.statement();
-			if (statement) {
-				statements.push(statement);
-			}
-			if (this.prevToken!.kind !== SyntaxKind.CloseCurlyToken && this.prevToken!.kind !== SyntaxKind.SemicolonToken) {
-				this.optionalSemicolon();
-			}
-		}
-
-		return {
-			kind: SyntaxKind.BlockStatement,
-			start: statements[0].start,
-			end: statements[statements.length - 1].end,
-			body: statements
-		};
-	}
-
-	private statement(): Statement | undefined {
-		switch (this.token().kind) {
-		case SyntaxKind.SemicolonToken: this.next(); return;
-		case SyntaxKind.IfKeyword: return this.ifStatement();
-		case SyntaxKind.WhileKeyword: return this.whileStatement();
-		case SyntaxKind.DoKeyword: return this.doWhileStatement();
-		case SyntaxKind.ForKeyword: return this.forStatement();
-		case SyntaxKind.ForeachKeyword: return this.foreachStatement();
-		case SyntaxKind.SwitchKeyword: return this.switchStatement();
-		case SyntaxKind.LocalKeyword: return this.localStatement();
-		case SyntaxKind.ConstKeyword: return this.constStatement();
-		case SyntaxKind.ReturnKeyword: return this.returnStatement();
-		case SyntaxKind.YieldKeyword: return this.yieldStatement();
-		case SyntaxKind.FunctionKeyword: return this.functionStatement();
-		case SyntaxKind.ClassKeyword: return this.classStatement();
-		case SyntaxKind.EnumKeyword: return this.enumStatement();
-		case SyntaxKind.OpenCurlyToken: {
+	private parseOptional(kind: SyntaxKind): boolean {
+		if (this.token().kind === kind) {
 			this.next();
-			const statements = this.statements();
-			this.expect(SyntaxKind.CloseCurlyToken);
-			return statements;
+			return true;
 		}
-		case SyntaxKind.TryKeyword: return this.tryCatchStatement();
-		case SyntaxKind.ThrowKeyword: {
-			this.next();
-			const expression = this.commaExpression();
-			return expression;
-		}
-		default: 
-		}
+
+		return false;
 	}
 
-	private expect(kind: SyntaxKind): Token | null {
+	private parseOptionalAndReturn<T extends SyntaxKind>(kind: T): TokenNode<T> | undefined {
 		const token = this.token();
 		if (token.kind !== kind) {
-			this.errors.push({
-				message: `Expected '${tokenKindToString.get(kind)}', but got '${tokenKindToString.get(this.token().kind)}'`,
-				start: this.token().start,
-				end: this.token().end
-			});
-			this.findNextStatement();
-			return null;
+			return;
 		}
+
 		this.next();
-		return token;
+		return createNodeFromToken<T>(token as Token<T>);
 	}
 
-	private expectScalar(): ScalarLiteral | null {
-		switch (this.token().kind) {
-		case SyntaxKind.StringToken:
-		case SyntaxKind.VerbatimStringToken: {
-			const expr: StringLiteral = {
-				kind: SyntaxKind.StringLiteral,
-				start: this.token().start,
-				end: this.token().end,
-				value: this.token().value,
-				isVerbatim: this.token().kind === SyntaxKind.StringToken
-			};
-			this.next();
-			return expr;
+	private parseExpected(kind: SyntaxKind, additionalMessage: string = ""): boolean {
+		if (this.parseOptional(kind)) {
+			return true;
 		}
-		case SyntaxKind.IntegerToken:
-		case SyntaxKind.FloatToken: {
-			const expr: NumericLiteral = {
-				kind: SyntaxKind.NumericLiteral,
-				start: this.token().start,
-				end: this.token().end,
-				value: 0
-			};
-			this.next();
-			return expr;
-		}
-		case SyntaxKind.TrueKeyword:
-		case SyntaxKind.FalseKeyword: {
-			const expr: BooleanLiteral = {
-				kind: SyntaxKind.BooleanLiteral,
-				start: this.token().start,
-				end: this.token().end,
-				value: this.token().kind === SyntaxKind.TrueKeyword
-			};
 
-			this.next();
-			return expr;
+		this.diagnosticAtCurrentToken("Expected " + additionalMessage + `'${TokenToString.get(kind)}'.`);
+		return false;
+	}
+
+	private parseExpectedAndReturn<T extends SyntaxKind>(kind: T, additionalMessage: string = ""): TokenNode<T> {
+		const result = this.parseOptionalAndReturn(kind);
+		if (result) {
+			return result;
 		}
+
+		this.diagnosticAtCurrentToken("Expected " + additionalMessage + `'${TokenToString.get(kind)}'.`);
+		return createMissingNode(this.token().start, kind);
+	}
+
+	// Used to get the end of the statement
+	// e.g. `do {...} while (expr)` the ) is the end of `do` statement
+	private parseEndToken(kind: SyntaxKind): number {
+		const token = this.token();
+		if (token.kind === kind) {
+			this.next();
+			return token.end;
+		}
+
+		this.diagnosticAtCurrentToken(`Expected '${TokenToString.get(kind)}'.`);
+		return token.start;
+	}
+
+	private canParseSemicolon(): boolean {
+		const kind = this.token().kind;
+
+		return kind === SyntaxKind.SemicolonToken || kind === SyntaxKind.CloseBraceToken ||
+			kind === SyntaxKind.EndOfFileToken || this.hasPrecedingLineBreak;
+    }
+
+	private parseList<T extends Node>(context: ParsingContext, parseElement: () => T): NodeArray<T> {
+		const saveParsingContext = this.parsingContext;
+		this.parsingContext |= context;
+		const list: T[] = [];
+		const start = this.token().start;
+
+		while (!this.isListTerminator(context)) {
+			if (this.isListElement(context)) {
+				const element = parseElement();
+				list.push(element);
+			}
+
+			if (this.abortParsingListOrMoveToNextToken(context)) {
+				break;
+			}
+		}
+
+		this.parsingContext = saveParsingContext;
+		return createNodeArray(start, list);
+	}
+
+	private isListTerminator(parsingContext: ParsingContext) {
+		const kind = this.token().kind;
+		if (kind === SyntaxKind.EndOfFileToken) {
+			// Being at the end of the file ends all lists.
+			return true;
+		}
+
+		switch (parsingContext) {
+		case ParsingContext.SourceElements:
+		case ParsingContext.BlockStatements:
+		case ParsingContext.SwitchClauses:
+		case ParsingContext.ClassMembers:
+		case ParsingContext.EnumMembers:
+		case ParsingContext.TableLiteralMembers:
+			return kind === SyntaxKind.CloseBraceToken;
+		case ParsingContext.SwitchClauseStatements:
+			return kind === SyntaxKind.CloseBraceToken || kind === SyntaxKind.CaseKeyword || kind === SyntaxKind.DefaultKeyword;
+		case ParsingContext.ArrayLiteralMembers:
+			return kind === SyntaxKind.CloseBracketToken;
+		case ParsingContext.VariableDeclarations:
+			return this.canParseSemicolon();
+		case ParsingContext.Parameters:
+		case ParsingContext.ArgumentExpressions:
+			return kind === SyntaxKind.CloseParenthesisToken;
+		}
+	}
+
+	private isListElement(context: ParsingContext, inErrorRecovery: boolean = false) {
+		const kind = this.token().kind;
+		switch (context) {
+		case ParsingContext.SourceElements:
+		case ParsingContext.BlockStatements:
+		case ParsingContext.SwitchClauseStatements:
+			// If we're in error recovery, then we don't want to treat ';' as an empty statement.
+			// The problem is that ';' can show up in far too many contexts, and if we see one
+			// and assume it's a statement, then we may bail out inappropriately from whatever
+			// we're parsing.  For example, if we have a semicolon in the middle of a class, then
+			// we really don't want to assume the class is over and we're on a statement in the
+			// outer module.  We just want to consume and move on.
+			return !(inErrorRecovery && kind === SyntaxKind.SemicolonToken) && this.isStartOfStatement();
+		case ParsingContext.SwitchClauses:
+			return kind === SyntaxKind.CaseKeyword || kind === SyntaxKind.DefaultKeyword;
+		case ParsingContext.ClassMembers:
+			return this.isClassMemberDeclarationStart();
+		case ParsingContext.EnumMembers:
+			return isTokenAValidIdentifier(this.token());
+		case ParsingContext.ArrayLiteralMembers:
+			return this.isStartOfExpression();
+		case ParsingContext.TableLiteralMembers:
+			return this.isTableMemberDeclarationStart();
+		case ParsingContext.VariableDeclarations:
+			return isTokenAValidIdentifier(this.token());
+		case ParsingContext.Parameters:
+			return isTokenAValidIdentifier(this.token()) || kind === SyntaxKind.DotDotDotToken;
+		case ParsingContext.ArgumentExpressions:
+			return this.isStartOfExpression();
+		}
+	}
+
+	private isStartOfStatement(): boolean {
+		switch (this.token().kind) {
+		case SyntaxKind.SemicolonToken:
+		case SyntaxKind.IfKeyword:
+		case SyntaxKind.WhileKeyword:
+		case SyntaxKind.DoKeyword:
+		case SyntaxKind.ForKeyword:
+		case SyntaxKind.ForEachKeyword:
+		case SyntaxKind.SwitchKeyword:
+		case SyntaxKind.LocalKeyword:
+		case SyntaxKind.ConstKeyword:
+		case SyntaxKind.ReturnKeyword:
+		case SyntaxKind.YieldKeyword:
+		case SyntaxKind.ContinueKeyword:
+		case SyntaxKind.BreakKeyword:
+		case SyntaxKind.FunctionKeyword:
+		case SyntaxKind.ClassKeyword:
+		case SyntaxKind.EnumKeyword:
+		case SyntaxKind.OpenBraceToken:
+		case SyntaxKind.TryKeyword:
+		case SyntaxKind.ThrowKeyword:
+		// 'catch' and does not actually indicate that the code is part of a statement,
+		// however, we say they are here so that we may gracefully parse them and error later.
+		// falls through
+		case SyntaxKind.CatchKeyword:
+			return true;
+		default:
+			return this.isStartOfExpression();
+		}
+	}
+
+	private isStartOfExpression(): boolean {
+		switch (this.token().kind) {
 		case SyntaxKind.MinusToken:
-			const kind = this.next();
-			if (kind !== SyntaxKind.IntegerToken && kind !== SyntaxKind.FloatToken) {
-				this.errors.push({
-					message: "Scalar expected: integer or float",
-					start: this.token().start,
-					end: this.token().end
-				});
-				this.findNextStatement();
-				return null;
-			}
-			const expr: NumericLiteral = {
-				kind: SyntaxKind.NumericLiteral,
-				start: this.token().start,
-				end: this.token().end,
-				value: 0
-			};
-			this.next();
-			return expr;
+		case SyntaxKind.TildeToken:
+		case SyntaxKind.ExclamationToken:
+		case SyntaxKind.AtToken:
+
+		case SyntaxKind.MinusMinusToken:
+		case SyntaxKind.PlusPlusToken:
+		case SyntaxKind.ColonColonToken:
+
+		case SyntaxKind.CloneKeyword:
+		case SyntaxKind.DeleteKeyword:
+		case SyntaxKind.TypeOfKeyword:
+		case SyntaxKind.ResumeKeyword:
+
+		case SyntaxKind.IdentifierToken:
+		case SyntaxKind.ConstructorKeyword:
+		case SyntaxKind.ThisKeyword:
+		case SyntaxKind.BaseKeyword:
+		case SyntaxKind.__FILE__Keyword:
+		case SyntaxKind.__LINE__Keyword:
+
+		case SyntaxKind.IntegerToken:
+		case SyntaxKind.FloatToken:
+		case SyntaxKind.TrueKeyword:
+		case SyntaxKind.FalseKeyword:
+		case SyntaxKind.NullKeyword:
+		case SyntaxKind.StringToken:
+		case SyntaxKind.VerbatimStringToken:
+
+		case SyntaxKind.OpenBraceToken:
+		case SyntaxKind.OpenBracketToken:
+
+		case SyntaxKind.FunctionKeyword:
+		case SyntaxKind.ClassKeyword:
+		case SyntaxKind.RawCallKeyword:
+			return true;
 		default:
-			this.errors.push({
-				message: "Scalar expected: integer, float, boolean or string",
-				start: this.token().start,
-				end: this.token().end
-			});
-			this.findNextStatement();
-			return null;
+			return false;
 		}
 	}
 
-	private localStatement(): LocalDeclarationStatement | undefined {
-		const start = this.token().start;
-		this.next();
-		if (this.token().kind === SyntaxKind.FunctionKeyword) {
-			const name = this.expect(SyntaxKind.IdentifierToken);
-			if (!name) {
-				return undefined;
+	private isClassMemberDeclarationStart(): boolean {
+		switch (this.token().kind) {
+		case SyntaxKind.FunctionKeyword:
+		case SyntaxKind.ConstructorKeyword:
+		case SyntaxKind.IdentifierToken:
+		case SyntaxKind.StaticKeyword:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	private isTableMemberDeclarationStart(): boolean {
+		switch (this.token().kind) {
+		case SyntaxKind.FunctionKeyword:
+		case SyntaxKind.ConstructorKeyword:
+		case SyntaxKind.IdentifierToken:
+		case SyntaxKind.StringToken:
+		case SyntaxKind.VerbatimStringToken:
+		case SyntaxKind.OpenBracketToken:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	private abortParsingListOrMoveToNextToken(context: ParsingContext): boolean {
+		this.parsingContextErrors(context);
+
+		for (let flag: ParsingContext = 1; flag < ParsingContext.Count; flag <<= 1) {
+			if (!(this.parsingContext & flag)) {
+				continue;
 			}
 
-			if (!this.expect(SyntaxKind.OpenRoundToken)) {
-				return undefined;
+			if (this.isListElement(flag, /*inErrorRecovery*/ true) || this.isListTerminator(flag)) {
+				return true;
 			}
-
-			return;
 		}
 
-		const declarationList: LocalDeclaration[] = [];
+		this.next();
+		return false;
+	}
+
+	private parsingContextErrors(context: ParsingContext) {
+		switch (context) {
+		case ParsingContext.SourceElements:
+		case ParsingContext.BlockStatements:
+		case ParsingContext.SwitchClauseStatements:
+			return this.diagnosticAtCurrentToken("Declaration or statement expected.");
+		case ParsingContext.SwitchClauses:
+			return this.diagnosticAtCurrentToken("'case' or 'default' expected.");
+		case ParsingContext.ClassMembers:
+			return this.diagnosticAtCurrentToken("Table element expected (identifier, 'static' or 'function').");
+		case ParsingContext.EnumMembers:
+			return this.diagnosticAtCurrentToken("Enum member expected (identifier).");
+		case ParsingContext.ArrayLiteralMembers:
+			return this.diagnosticAtCurrentToken("Array element expected (expression).");
+		case ParsingContext.TableLiteralMembers:
+			return isTokenAKeyword(this.token()) ?
+				this.diagnosticAtCurrentToken(`${TokenToString.get(this.token().kind)} is not allowed as a property name. Wrap it in a string literal if you wish to use it.`) :
+				this.diagnosticAtCurrentToken("Table element expected (identifier, 'function', '[]' or a string literal).");
+		case ParsingContext.VariableDeclarations:
+		case ParsingContext.Parameters:
+			return isTokenAKeyword(this.token()) ?
+				this.diagnosticAtCurrentToken(`${TokenToString.get(this.token().kind)} is not allowed as a parameter name.`) :
+				this.diagnosticAtCurrentToken("Parameter declaration expected (identifier).");
+		case ParsingContext.ArgumentExpressions:
+			return this.diagnosticAtCurrentToken("Argument expression expected.");
+		}
+	}
+
+	private parseCommaExpression(): CommaExpression | Expression {
+		const expressions = [this.parseBinaryExpression()];
+		while (this.parseOptional(SyntaxKind.CommaToken)) {
+			expressions.push(this.parseBinaryExpression());
+		}
+
+		if (expressions.length === 1) {
+			return expressions[0];
+		}
+
+		return expressions;
+	}
+	
+	private parseBinaryExpressionOrHigher(precedence: OperatorPrecedence) {
+		const start = this.token().start;
+		const leftOperand = this.parseUnaryExpressionOrHigher();
+		return this.parseBinaryExpressionRest(start, precedence, leftOperand);
+	}
+
+	private parseBinaryExpressionRest(start: number, precedence: OperatorPrecedence, leftOperand: Expression): Expression {
 		while (true) {
-			const name = this.expect(SyntaxKind.IdentifierToken);
-			if (!name) {
-				return;
-			}
-
-			if (this.token().kind === SyntaxKind.EqualsToken) {
-				this.next();
-				const initialiser = this.expression();
-				declarationList.push({
-					kind: SyntaxKind.LocalDeclaration,
-					start: name.start,
-					end: initialiser.end,
-					name: name.value,
-					initialiser
-				});
-			} else {
-				declarationList.push({
-					kind: SyntaxKind.LocalDeclaration,
-					start: name.start,
-					end: name.end,
-					name: name.value
-				});
-			}
-
-			if (this.token().kind !== SyntaxKind.CommaToken) {
+			const newPrecedence = getBinaryOperatorPrecedence(this.token().kind);
+											// The only right-left operators
+			const consumeCurrentOperator = newPrecedence === OperatorPrecedence.AssignmentOrConditional ?
+				newPrecedence >= precedence :
+				newPrecedence > precedence;
+			
+			if (!consumeCurrentOperator) {
 				break;
 			}
-
-			this.next();
-		}
-		if (declarationList.length === 0) {
-			return undefined;
-		}
-
-		return {
-			kind: SyntaxKind.LocalDeclarationStatement,
-			start: start,
-			end: declarationList[declarationList.length - 1].end,
-			declarations: declarationList
-		};
-	}
-
-	private constStatement(): ConstDeclarationStatement | undefined {
-		const start = this.token().start;
-		this.next();
-		const name = this.expect(SyntaxKind.IdentifierToken);
-		if (name === null) {
-			return undefined;
+			
+			leftOperand = this.token().kind === SyntaxKind.QuestionToken ?
+				this.parseConditionalExpression(leftOperand, start) :
+				createBinaryExpression(start, leftOperand, this.token(), this.parseBinaryExpressionOrHigher(newPrecedence));
 		}
 
-		if (this.expect(SyntaxKind.EqualsToken) === null) {
-			return undefined;
-		}
-
-		const initialiser = this.expectScalar();
-		if (initialiser === null) {
-			return undefined;
-		}
-
-		return {
-			kind: SyntaxKind.ConstDeclarationStatement,
-			start: start,
-			end: this.token().end,
-			name: name.value,
-			initialiser
-		};
+		return leftOperand;
 	}
 
-
-	private ifStatement(): Statement | undefined {
-		this.next();
-		this.expect(SyntaxKind.OpenRoundToken);
-		this.commaExpression();
-		this.expect(SyntaxKind.CloseRoundToken);
-		return undefined;
-	}
-
-	private whileStatement(): Statement | undefined {
-		this.next();
-
-		return undefined;
-	}
-
-	private doWhileStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-
-	private forStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-
-	private foreachStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-
-	private switchStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-
-	private returnStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-	private yieldStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-	private continueStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-	private functionStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-	private classStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-	private enumStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-	private tryCatchStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-	private throwStatement(): Statement | undefined {
-		this.next();
-		return undefined;
-	}
-
-	private findNextStatement(): void {
-		return;
-	}
-
-	private isEndOfStatement(): boolean {
-		return this.prevToken!.kind === SyntaxKind.LineFeedToken ||
-			this.token().kind === SyntaxKind.EOF ||
-			this.token().kind === SyntaxKind.CloseCurlyToken ||
-			this.token().kind === SyntaxKind.SemicolonToken;
-	}
-
-	private optionalSemicolon(): void {
-		if (this.token().kind === SyntaxKind.SemicolonToken) {
-			this.next();
-			return;
-		}
-
-		if (!this.isEndOfStatement()) {
-			this.errors.push({
-				message: "End of statement expected (; or line feed)",
-				start: this.token().end,
-				end: this.token().end
-			});
+	private parseUnaryExpressionOrHigher(): Expression {
+		switch (this.token().kind) {
+		case SyntaxKind.MinusToken:
+		case SyntaxKind.TildeToken:
+		case SyntaxKind.ExclamationToken:
+			return this.parsePrefixUnaryExpression();
+		case SyntaxKind.ColonColonToken:
+			return this.parseGlobalExpression();
+		case SyntaxKind.PlusPlusToken:
+		case SyntaxKind.MinusMinusToken:
+			return this.parsePrefixUpdateExpression();
+		case SyntaxKind.DeleteKeyword:
+			return this.parseDeleteExpression();
+		case SyntaxKind.TypeOfKeyword:
+			return this.parseTypeOfExpression();
+		case SyntaxKind.ResumeKeyword:
+			return this.parseResumeExpression();
+		case SyntaxKind.CloneKeyword:
+			return this.parseCloneExpression();
+		case SyntaxKind.RawCallKeyword:
+			return this.parseRawCallExpression();
+		default:
+			const expression = this.parsePrimaryExpression();
+			return this.parsePostFixExpression(expression);
 		}
 	}
 
-	private expression(): Expression {
-		return this.logicalOrExpression();
-	}
-
-	private logicalOrExpression(): Expression {
-		let left = this.logicalAndExpression();
-		while (this.token().kind === SyntaxKind.PipePipeToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.logicalAndExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
+	private parsePostFixExpression(expression: Expression): Expression {
+		switch (this.token().kind) {
+		case SyntaxKind.PlusPlusToken:
+		case SyntaxKind.MinusMinusToken:
+			return this.parsePostFixUpdateExpression(expression);
+		case SyntaxKind.DotToken:
+			expression = this.parseMemberAccessExpression(expression);
+			return this.parsePostFixExpression(expression);
+		case SyntaxKind.OpenBracketToken:
+			expression = this.parseSubscriptExpression(expression);
+			return this.parsePostFixExpression(expression);
+		case SyntaxKind.OpenParenthesisToken:
+			expression = this.parseCallExpression(expression);
+			return this.parsePostFixExpression(expression);
+		default:
+			return expression;
 		}
-		return left;
 	}
 
-	private logicalAndExpression(): Expression {
-		let left = this.bitwiseOrExpression();
-		while (this.token().kind === SyntaxKind.AmpersandAmpersandToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.bitwiseOrExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private bitwiseOrExpression(): Expression {
-		let left = this.bitwiseXorExpression();
-		while (this.token().kind === SyntaxKind.PipeToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.bitwiseXorExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private bitwiseXorExpression(): Expression {
-		let left = this.bitwiseAndExpression();
-		while (this.token().kind === SyntaxKind.CaretToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.bitwiseAndExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private bitwiseAndExpression(): Expression {
-		let left = this.equalityExpression();
-		while (this.token().kind === SyntaxKind.AmpersandToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.equalityExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private equalityExpression(): Expression {
-		let left = this.relationalExpression();
-		while (this.token().kind === SyntaxKind.EqualsEqualsToken || this.token().kind === SyntaxKind.NotEqualsToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.relationalExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private relationalExpression(): Expression {
-		let left = this.shiftExpression();
-		while (this.token().kind === SyntaxKind.LessThanToken || this.token().kind === SyntaxKind.GreaterThanToken || this.token().kind === SyntaxKind.LessThanEqualsToken || this.token().kind === SyntaxKind.GreaterThanEqualsToken || this.token().kind === SyntaxKind.LessThanEqualsGreaterThanToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.shiftExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private shiftExpression(): Expression {
-		let left = this.additiveExpression();
-		while (this.token().kind === SyntaxKind.LessThanLessThanToken || this.token().kind === SyntaxKind.GreaterThanGreaterThanToken || this.token().kind === SyntaxKind.GreaterThanGreaterThanGreaterThanToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.additiveExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private additiveExpression(): Expression {
-		let left = this.multiplicationExpression();
-		while (this.token().kind === SyntaxKind.PlusToken || this.token().kind === SyntaxKind.MinusToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.multiplicationExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private multiplicationExpression(): Expression {
-		let left = this.postfixedExpression();
-		while (this.token().kind === SyntaxKind.AsteriskToken || this.token().kind === SyntaxKind.SlashToken || this.token().kind === SyntaxKind.PercentToken) {
-			const operator = this.token().value;
-			this.next();
-			const right = this.postfixedExpression();
-			const expr = { kind: SyntaxKind.BinaryExpression, start: left.start, end: right.end, left, right, operator };
-			left.parent = expr;
-			right.parent = expr;
-			left = expr;
-		}
-		return left;
-	}
-
-	private postfixedExpression(): Expression {
-		let expr = this.primaryExpression();
-
-		return expr;
-	}
-
-	private primaryExpression(): Expression {
+	private parsePrimaryExpression() {
 		switch (this.token().kind) {
 		case SyntaxKind.StringToken:
-		case SyntaxKind.VerbatimStringToken: {
-			const expr: StringLiteral = {
-				kind: SyntaxKind.StringLiteral,
-				start: this.token().start,
-				end: this.token().end,
-				value: this.token().value,
-				isVerbatim: this.token().kind === SyntaxKind.StringToken
-			};
-			this.next();
-			return expr;
-		}
+		case SyntaxKind.VerbatimStringToken:
 		case SyntaxKind.IntegerToken:
-		case SyntaxKind.FloatToken: {
-			const expr: NumericLiteral = {
-				kind: SyntaxKind.NumericLiteral,
-				start: this.token().start,
-				end: this.token().end,
-				value: 0
-			};
-			this.next();
-			return expr;
-		}
+		case SyntaxKind.FloatToken:
+			return this.parseLiteralExpression();
+		case SyntaxKind.ThisKeyword:
+		case SyntaxKind.BaseKeyword:
+		case SyntaxKind.NullKeyword:
 		case SyntaxKind.TrueKeyword:
-		case SyntaxKind.FalseKeyword: {
-			const expr: BooleanLiteral = {
-				kind: SyntaxKind.BooleanLiteral,
-				start: this.token().start,
-				end: this.token().end,
-				value: this.token().kind === SyntaxKind.TrueKeyword
-			};
-
-			this.next();
-			return expr;
-		}
-		case SyntaxKind.NullKeyword: {
-			// Return a literal expression node
-			const expr = {
-				kind: SyntaxKind.NullLiteral,
-				start: this.token().start,
-				end: this.token().end,
-				value: null
-			};
-			this.next();
-			return expr;
-		}
-		case SyntaxKind.IdentifierToken: {
-			const expr = {
-				kind: SyntaxKind.IdentifierExpression,
-				start: this.token().start,
-				end: this.token().end,
-				value: this.token().value
-			};
-			this.next();
-			return expr;
-		}
+		case SyntaxKind.FalseKeyword:
+			return this.parseTokenNode<PrimaryExpression>();
+		case SyntaxKind.OpenParenthesisToken:
+			return this.parseParenthesisedExpression();
+		case SyntaxKind.OpenBracketToken:
+			return this.parseArrayLiteralExpression();
+		case SyntaxKind.OpenBraceToken:
+			return this.parseTableLiteralExpression();
+		case SyntaxKind.FunctionKeyword:
+			return this.parseFunctionExpression();
+		case SyntaxKind.AtToken:
+			return this.parseFunctionExpression();
 		default:
-			this.errors.push({
-				start: this.token().start,
-				end: this.token().end,
-				message: "Expression Expected"
-			});
+			return this.parseIdentifierWithDiagnostic("Expression expected.");
 		}
-		return {
-			kind: SyntaxKind.Invalid,
-			start: this.token().start,
-			end: this.token().end
-		};
 	}
 
-
-	private commaExpression(): CommaExpression | undefined {
-		const expressions: Expression[] = [];
-		while (true) {
-			const expression = this.expression();
-			expressions.push(expression);
-			if (this.token().kind !== SyntaxKind.CommaToken) {
-				break;
-			}
+	private parseIdentifierWithDiagnostic(message?: string): Identifier {
+		const token = this.token();
+		const start = token.start;
+		if (isTokenAValidIdentifier(token)) {
 			this.next();
+			return createIdentifier(start, token.end, token.value);
 		}
-		if (expressions.length === 0) {
-			return undefined;
+
+		if (!message) {
+			const representation = TokenToString.get(token.kind);
+
+			message = "Identifier expected." +
+				(isTokenAKeyword(token) ? `'${representation}' is a reserved word that cannot be used here.` : "");
 		}
-		return {
-			kind: SyntaxKind.CommaExpression,
-			start: expressions[0].start,
-			end: expressions[expressions.length - 1].end,
-			body: expressions
-		};
+		
+		this.diagnosticAtCurrentToken(message);
+		return createMissingNode(start, SyntaxKind.Identifier); 
+	}
+
+	private parseLiteralExpression() {
+
+	}
+
+	private parseConditionalExpression(condition: Expression, start: number): Expression {
+		this.parseExpected(SyntaxKind.QuestionToken);
+		const whenTrue = this.parseExpression();
+		const whenFalse = this.parseExpected(SyntaxKind.ColonToken) ? this.parseExpression() : undefined;
+		return createConditionalExpression(start, condition, whenTrue, whenFalse);
+	}
+
+	private parseStatement(): Statement {
+		switch (this.token().kind) {
+		case SyntaxKind.SemicolonToken:
+			return this.parseEmptyStatement();
+		case SyntaxKind.OpenBraceToken:
+			return this.parseBlockStatement(); 
+		case SyntaxKind.IfKeyword:
+			return this.parseIfStatement();
+		case SyntaxKind.WhileKeyword:
+			return this.parseWhileStatement();
+		case SyntaxKind.DoKeyword:
+			return this.parseDoStatement();
+		case SyntaxKind.ForKeyword:
+			return this.parseForStatement();
+		case SyntaxKind.ForEachKeyword:
+			return this.parseForEachStatement();
+		case SyntaxKind.SwitchKeyword:
+			return this.switchStatement();
+		case SyntaxKind.LocalKeyword:
+			return this.localStatement();
+		case SyntaxKind.ConstKeyword:
+			return this.constStatement();
+		case SyntaxKind.ReturnKeyword:
+			return this.returnStatement();
+		case SyntaxKind.YieldKeyword:
+			return this.yieldStatement();
+		case SyntaxKind.ContinueKeyword:
+			return this.continueStatement();
+		case SyntaxKind.BreakKeyword:
+			return this.breakStatement();
+		case SyntaxKind.FunctionKeyword:
+			return this.functionStatement();
+		case SyntaxKind.ClassKeyword:
+			return this.classStatement();
+		case SyntaxKind.EnumKeyword:
+			return this.enumStatement();
+		case SyntaxKind.TryKeyword:
+			return this.tryCatchStatement();
+		case SyntaxKind.ThrowKeyword:
+			return this.throwStatement();
+		default:
+			return this.parseCommaExpression();
+		}
+	}
+
+	private parseEmptyStatement(): EmptyStatement {
+		const start = this.token().start;
+		const end = this.parseEndToken(SyntaxKind.SemicolonToken);
+		return createEmptyStatement(start, end);
+	}
+
+	private parseIfStatement(): IfStatement {
+		const start = this.token().start;
+		this.parseExpected(SyntaxKind.IfKeyword);
+		this.parseExpected(SyntaxKind.OpenParenthesisToken);
+		const expression = this.parseCommaExpression();
+		this.parseExpected(SyntaxKind.CloseParenthesisToken);
+		const thenStatement = this.parseStatement();
+		const elseStatement = this.parseOptional(SyntaxKind.ElseKeyword) ? this.parseStatement() : undefined;
+		return createIfStatement(start, expression, thenStatement, elseStatement);
+	}
+
+	private parseBlockStatement(): Block {
+		const start = this.token().start;
+		this.parseExpected(SyntaxKind.OpenBraceToken);
+		const statements = this.parseList(ParsingContext.BlockStatements, this.parseStatement);
+		const end = this.parseEndToken(SyntaxKind.CloseBraceToken);
+		return createBlockStatement(start, statements, end);
+	}
+
+	private parseWhileStatement(): WhileStatement {
+		const start = this.token().start;
+		this.parseExpected(SyntaxKind.WhileKeyword);
+		this.parseExpected(SyntaxKind.OpenParenthesisToken);
+		const expression = this.parseCommaExpression();
+		this.parseExpected(SyntaxKind.CloseParenthesisToken);
+		const statement = this.parseStatement();
+		return createWhileStatement(start, expression, statement);
+	}
+
+	private parseDoStatement(): DoStatement {
+		const start = this.token().start;
+		this.parseExpected(SyntaxKind.DoKeyword);
+		const statement = this.parseStatement();
+		this.parseExpected(SyntaxKind.WhileKeyword);
+		this.parseExpected(SyntaxKind.OpenParenthesisToken);
+		const expression = this.parseCommaExpression();
+		const end = this.parseEndToken(SyntaxKind.CloseParenthesisToken);
+		return createDoStatement(start, statement, expression, end);
+	}
+
+	private parseForStatement(): ForStatement {
+		const start = this.token().start;
+		this.parseExpected(SyntaxKind.ForKeyword);
+		this.parseExpected(SyntaxKind.OpenParenthesisToken);
+
+		let initialiser: LocalStatement | Expression | undefined;
+		if (this.token().kind === SyntaxKind.LocalKeyword) {
+			initialiser = this.localStatement();
+		} else if (this.token().kind !== SyntaxKind.SemicolonToken) {
+			initialiser = this.commaExpression();
+		}
+
+		this.parseExpected(SyntaxKind.SemicolonToken);
+		const condition = this.token().kind !== SyntaxKind.SemicolonToken ? this.parseExpression() : undefined;
+		this.parseExpected(SyntaxKind.SemicolonToken);
+		const incrementor = this.token().kind !== SyntaxKind.CloseParenthesisToken ? this.parseExpression() : undefined;
+		this.parseExpected(SyntaxKind.CloseParenthesisToken);
+		const statement = this.parseStatement();
+		return createForStatement(start, initialiser, condition, incrementor, statement);
+	}
+
+	private parseForEachStatement(): ForEachStatement {
+		const start = this.token().start;
+		this.parseExpected(SyntaxKind.ForEachKeyword);
+		this.parseExpected(SyntaxKind.OpenParenthesisToken);
+		let index: Identifier | undefined;
+		let value = this.parseIdentifierWithDiagnostic();
+		if (this.parseOptional(SyntaxKind.CommaToken)) {
+			index = value;
+			value = this.parseIdentifierWithDiagnostic();
+		}
+		this.parseExpected(SyntaxKind.InKeyword);
+		const iterable = this.parseExpression();
+		this.parseExpected(SyntaxKind.CloseBraceToken);
+		const statement = this.parseStatement();
+		return createForEachStatement(start, index, value, iterable, statement);
 	}
 }
