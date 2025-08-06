@@ -1,15 +1,15 @@
-import { StringToken, Token, SyntaxKind } from 'squirrel';
+import { StringToken, Token, SyntaxKind, String } from 'squirrel';
 import { Position, Range, Selection, TextDocument, window } from 'vscode';
 
 function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
 	return new Range(document.positionAt(start), document.positionAt(end));
 }
 
-function getQuote(document: TextDocument, token: StringToken): string {
+function getQuote(document: TextDocument, token: StringToken<String>): string {
 	return document.getText(convertOffsetsToRange(document, token.start, token.sourcePositions[0]));
 }
 
-export default async function onEnterHandler(document: TextDocument, offset: number, indent: string, token: Token) {
+export default async function onEnterHandler(document: TextDocument, offset: number, indent: string, token: Token<SyntaxKind>) {
 	const editor = window.activeTextEditor;
 	if (!editor) {
 		return;
@@ -27,7 +27,7 @@ export default async function onEnterHandler(document: TextDocument, offset: num
 			return;
 		}
 
-		const quote = getQuote(document, token as StringToken);
+		const quote = getQuote(document, token as StringToken<typeof token.kind>);
 
 		await editor.edit(editBuilder => {
 			editBuilder.insert(previousPosition, quote + ' +');
@@ -46,7 +46,7 @@ export default async function onEnterHandler(document: TextDocument, offset: num
 		// If we do not have a start to the left of the cursor we want to have lines without inserting *
 		const hasStar = beforeText.trimStart().startsWith('*');
 
-		if (isClosed(token)) {
+		if (isClosed(token as Token<SyntaxKind.DocComment>)) {
 			if (!isEnclosed(token, offset, -2)) {
 				return;
 			}
@@ -76,7 +76,7 @@ export default async function onEnterHandler(document: TextDocument, offset: num
 			return;
 		}
 
-		if (isClosed(token)) {
+		if (isClosed(token as Token<SyntaxKind.BlockComment>)) {
 			return;
 		}
 
@@ -92,14 +92,14 @@ export default async function onEnterHandler(document: TextDocument, offset: num
 
 
 // Checks how deep the cursor is inside the token, positive numbers to check from the left, negative for the right
-function isEnclosed(token: Token, offset: number, number: number) {
+function isEnclosed(token: Token<SyntaxKind>, offset: number, number: number) {
 	if (number > 0) {
 		return token.start + number <= offset;
 	}
 	return token.end + number >= offset;
 }
 
-function isClosed(token: Token) {
+function isClosed(token: Token<SyntaxKind.BlockComment | SyntaxKind.DocComment>) {
 	// Cutting the starting /*
 	// If we have another /* in the comment's body, it means that we're trying to make a new comment on top of another comment
 	if (token.value.slice(2).includes("/*")) {

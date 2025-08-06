@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { Token } from 'squirrel';
+import { SyntaxKind, Token } from 'squirrel';
 import { workspace, ExtensionContext } from 'vscode';
 
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node';
@@ -57,7 +57,7 @@ export function activate(context: ExtensionContext) {
 						return;
 					}
 
-					const token = response as Token;
+					const token = response as Token<SyntaxKind>;
 					await onEnterHandler(document, offset, indent, token);
 				});
 		})

@@ -15,7 +15,7 @@ import {
 } from 'vscode-languageserver/node';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 
-import { isTokenAComment, isTokenAString, isTokenSkippable, Lexer, Parser, StringToken, Token, TokenIterator, SyntaxKind } from 'squirrel';
+import { isTokenAComment, isTokenAString, isTokenTrivia, Lexer, Parser, StringToken, Token, TokenIterator, SyntaxKind } from 'squirrel';
 
 import onHoverHandler from './onHover';
 import { onCompletionHandler, onCompletionResolveHandler } from './onCompletion';
@@ -173,7 +173,7 @@ connection.onDidChangeWatchedFiles(_change => {
 });
 */
 
-connection.onRequest('getToken', (params: { uri: string, offset: number }): Token | null => {
+connection.onRequest('getToken', (params: { uri: string, offset: number }): Token<SyntaxKind> | null => {
 	const info = documentInfo.get(params.uri);
 	if (!info) {
 		return null;
@@ -183,7 +183,7 @@ connection.onRequest('getToken', (params: { uri: string, offset: number }): Toke
 }); 
 
 function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagnostic[]) {
-	for (let token = lexer.lex(); token.kind !== SyntaxKind.EOF; token = lexer.lex()) {
+	for (let token = lexer.lex(); token.kind !== SyntaxKind.EndOfFileToken; token = lexer.lex()) {
 		// lex
 	}
 
@@ -200,16 +200,16 @@ function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagno
 
 		do {
 			token = iterator.next();
-		} while (isTokenSkippable(token));
+		} while (isTokenTrivia(token));
 
 		if (token.kind === SyntaxKind.CommaToken) {
 			do {
 				token = iterator.next();
-			} while (isTokenSkippable(token));
+			} while (isTokenTrivia(token));
 		}
 
 		if (isTokenAString(token)) {
-			const code = token as StringToken;
+			const code = token as StringToken<typeof token.kind>;
 			code.lexer = new Lexer(code.value, code.sourcePositions);
 
 			processLexer(document, code.lexer, diagnostics);
@@ -230,7 +230,8 @@ function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagno
 				end: document.positionAt(error.end)
 			},
 			message: error.message,
-			source: "lexer"
+			severity: error.severity,
+			source: "tf2-vscript-support"
 		});
 	}
 }
@@ -266,7 +267,8 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 				end: document.positionAt(error.end)
 			},
 			message: error.message,
-			source: "parser"
+			severity: error.severity,
+			source: "tf2-vscript-support"
 		});
 	}*/
 
@@ -277,7 +279,7 @@ function runParse(document: TextDocument, lexer: Lexer, diagnostics: Diagnostic[
 	const iterator = new TokenIterator(lexer.getTokens());
 	while (iterator.hasNext()) {
 		const token = iterator.next();
-		if (token.kind !== SyntaxKind.IdentifierToken) {
+		if (token.kind !== SyntaxKind.Identifier) {
 			continue;
 		}
 
@@ -298,14 +300,13 @@ function runParse(document: TextDocument, lexer: Lexer, diagnostics: Diagnostic[
 		};
 		
 		if ("successor" in doc) {
-			const diagnostic: Diagnostic = {
+			diagnostics.push({
 				range,
 				message: `'${signature}' is deprecated.`,
 				severity: DiagnosticSeverity.Hint,
 				tags: [DiagnosticTag.Deprecated],
-				source: 'parser'
-			};
-			diagnostics.push(diagnostic);
+				source: "tf2-vscript-support"
+			});
 		}
 
 		const usedParamCount = getUsedParamCount(iterator);
@@ -338,7 +339,7 @@ function runParse(document: TextDocument, lexer: Lexer, diagnostics: Diagnostic[
 			range,
 			message,
 			severity: DiagnosticSeverity.Error,
-			source: 'parser'
+			source: "tf2-vscript-support"
 		});
 	}
 }
@@ -361,7 +362,7 @@ function getParamCount(signature: string): { minParamCount: number, maxParamCoun
 	let paramCount = 1;
 	let defaultParamCount = 0;
 	let isVariadic = false;
-	for (let token = lexer.lex(); token.kind !== SyntaxKind.EOF; token = lexer.lex()) {
+	for (let token = lexer.lex(); token.kind !== SyntaxKind.EndOfFileToken; token = lexer.lex()) {
 		switch (token.kind) {
 		case SyntaxKind.CommaToken:
 			paramCount++;
@@ -388,7 +389,7 @@ function getUsedParamCount(iterator: TokenIterator): number {
 		if (isTokenAComment(token) || token.kind === SyntaxKind.LineFeedToken) {
 			continue;
 		}
-		if (token.kind === SyntaxKind.OpenRoundToken) {
+		if (token.kind === SyntaxKind.OpenParenthesisToken) {
 			break;
 		}
 
@@ -403,17 +404,17 @@ function getUsedParamCount(iterator: TokenIterator): number {
 	while (iterator.hasNext()) {
 		const token = iterator.next();
 		switch (token.kind) {
-		case SyntaxKind.CloseRoundToken:
-		case SyntaxKind.CloseCurlyToken:
-		case SyntaxKind.RightSquareToken:
+		case SyntaxKind.CloseParenthesisToken:
+		case SyntaxKind.CloseBraceToken:
+		case SyntaxKind.CloseBracketToken:
 			depth--;
 			if (depth === 0) {
 				return foundParam ? paramCount + 1 : 0;
 			}
 			break;
-		case SyntaxKind.OpenRoundToken:
-		case SyntaxKind.OpenCurlyToken:
-		case SyntaxKind.OpenSquareToken:
+		case SyntaxKind.OpenParenthesisToken:
+		case SyntaxKind.OpenBraceToken:
+		case SyntaxKind.OpenBracketToken:
 			depth++;
 			break;
 		case SyntaxKind.CommaToken:

@@ -1,6 +1,6 @@
 import { ParameterInformation, SignatureHelp, SignatureHelpParams, SignatureInformation } from 'vscode-languageserver';
 import { documents, getDocumentSettings, documentInfo } from './server';
-import { TokenIterator, SyntaxKind, isTokenAComment, globals, Doc } from 'squirrel';
+import { TokenIterator, SyntaxKind, isTokenAComment, Doc } from 'squirrel';
 
 
 export default async function onSignatureHelpHandler(params: SignatureHelpParams): Promise<SignatureHelp | null> {
@@ -64,13 +64,13 @@ function readParamCount(iterator: TokenIterator): number {
 	while (iterator.hasPrevious()) {
 		const token = iterator.previous();
 		switch (token.kind) {
-		case SyntaxKind.CloseRoundToken:
-		case SyntaxKind.CloseCurlyToken:
-		case SyntaxKind.RightSquareToken:
+		case SyntaxKind.CloseParenthesisToken:
+		case SyntaxKind.CloseBraceToken:
+		case SyntaxKind.CloseBracketToken:
 			depth++;
 			break;
-		case SyntaxKind.OpenCurlyToken:
-		case SyntaxKind.OpenSquareToken:
+		case SyntaxKind.OpenBraceToken:
+		case SyntaxKind.OpenBracketToken:
 			depth--;
 			if (depth === 0) {
 				// if we were inside a table or array, or another function then reset all the commas we've counted
@@ -80,7 +80,7 @@ function readParamCount(iterator: TokenIterator): number {
 				paramCount = 0;
 			}
 			break;
-		case SyntaxKind.OpenRoundToken:
+		case SyntaxKind.OpenParenthesisToken:
 			depth--;
 			if (depth === 0) {
 				return paramCount;

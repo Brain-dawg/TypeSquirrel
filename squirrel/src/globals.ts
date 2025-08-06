@@ -1,7 +1,7 @@
 import keywordsArray from './data/keywords.json';
 import stringCompletionsArray from './data/stringCompletions.json';
 import docs from "./data/docs.json";
-import { StringKind, Doc, Docs, InstanceDocs } from './squirrel';
+import { StringKind, Doc, Docs, InstanceDocs } from './types';
 
 export const keywords = new Set<string>(keywordsArray);
 

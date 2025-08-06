@@ -27,7 +27,7 @@ export default async function onHoverHandler(params: TextDocumentPositionParams)
 	const result = lexer.findTokenAtPosition(offset);
 	lexer = result.lexer;
 	
-	if (!result.token || isTokenAComment(result.token) || result.token.kind !== SyntaxKind.IdentifierToken) {
+	if (!result.token || isTokenAComment(result.token) || result.token.kind !== SyntaxKind.Identifier) {
 		return null;
 	}
 

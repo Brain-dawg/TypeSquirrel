@@ -107,14 +107,14 @@ export default async function onCodeActionHandler(params: CodeActionParams): Pro
 function getFirstParam(document: TextDocument, iterator: TokenIterator): { deleteRange: Range, textToKeep: string } | undefined {
 	let depth = 0;
 	let start: Position | null = null;
-	let token: Token | null = null;
+	let token: Token<SyntaxKind> | null = null;
 	while (iterator.hasNext()) {
 		token = iterator.next();
 
 		switch (token.kind) {
-		case SyntaxKind.CloseRoundToken:
-		case SyntaxKind.CloseCurlyToken:
-		case SyntaxKind.RightSquareToken:
+		case SyntaxKind.CloseParenthesisToken:
+		case SyntaxKind.CloseBraceToken:
+		case SyntaxKind.CloseBracketToken:
 			depth--;
 			if (depth === 0 && start) {
 				const deleteRange: Range = { start, end: document.positionAt(token.start) };
@@ -123,9 +123,9 @@ function getFirstParam(document: TextDocument, iterator: TokenIterator): { delet
 				return { deleteRange, textToKeep };
 			}
 			break;
-		case SyntaxKind.OpenCurlyToken:
-		case SyntaxKind.OpenSquareToken:
-		case SyntaxKind.OpenRoundToken:
+		case SyntaxKind.OpenBraceToken:
+		case SyntaxKind.OpenBracketToken:
+		case SyntaxKind.OpenParenthesisToken:
 			if (depth === 0) {
 				start = document.positionAt(token.end);
 			}
@@ -167,22 +167,22 @@ function getFirstParam(document: TextDocument, iterator: TokenIterator): { delet
 function getCallBodyRange(document: TextDocument, iterator: TokenIterator): Range | undefined {
 	let depth = 0;
 	let start: Position | null = null;
-	let token: Token | null = null;
+	let token: Token<SyntaxKind> | null = null;
 	while (iterator.hasNext()) {
 		token = iterator.next();
 
 		switch (token.kind) {
-		case SyntaxKind.CloseRoundToken:
-		case SyntaxKind.CloseCurlyToken:
-		case SyntaxKind.RightSquareToken:
+		case SyntaxKind.CloseParenthesisToken:
+		case SyntaxKind.CloseBraceToken:
+		case SyntaxKind.CloseBracketToken:
 			depth--;
 			if (depth === 0 && start) {
 				return { start, end: document.positionAt(token.start) };
 			}
 			break;
-		case SyntaxKind.OpenCurlyToken:
-		case SyntaxKind.OpenSquareToken:
-		case SyntaxKind.OpenRoundToken:
+		case SyntaxKind.OpenBraceToken:
+		case SyntaxKind.OpenBracketToken:
+		case SyntaxKind.OpenParenthesisToken:
 			if (depth === 0) {
 				start = document.positionAt(token.end);
 			}
