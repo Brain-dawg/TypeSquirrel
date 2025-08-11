@@ -1,7 +1,7 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, TextEdit } from 'vscode-languageserver';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { documents, getDocumentSettings, documentInfo } from './server';
-import { Token, TokenIterator, String, SyntaxKind, globals, Docs, StringKind, Lexer, isTokenAString, StringToken } from 'squirrel';
+import { Token, TokenIterator, StringTokenKind, SyntaxKind, globals, Docs, StringKind, Lexer, isTokenAString, StringToken } from 'squirrel';
 
 const enum DocKind {
 	Keywords,
@@ -37,7 +37,7 @@ function convertOffsetsToRange(document: TextDocument, start: number, end: numbe
 	};
 }
 
-function getQuote(document: TextDocument, token: StringToken<String>): string {
+function getQuote(document: TextDocument, token: StringToken<StringTokenKind>): string {
 														   // EG   |\\"|
 	const quote = document.getText(convertOffsetsToRange(document, token.start, token.sourcePositions[0]));
 	// Horrendous hack to make the embedded squirrel work by converting quotes back to backticks
@@ -75,7 +75,7 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 	if (!info) {
 		return items;
 	}
-	let lexer = info.globalLexer;
+	let lexer = info.lexer;
 	
 	const position = params.position;
 	const offset = document.offsetAt(position);
@@ -177,7 +177,6 @@ export async function onCompletionHandler(params: CompletionParams): Promise<Com
 		// No name but a dot means that we're searching for a shortcut
 		// If the last symbol was closing paranthesis it means that we have a method call which could return an entity
 		// Or we've possibly done table/class accessing with []
-
 		const lastToken = iterator.next();
 		if (!lastToken || lastToken.kind !== SyntaxKind.CloseParenthesisToken && lastToken.kind !== SyntaxKind.CloseBracketToken) {
 			addCompletionItems(document.uri, items, DocKind.InstancesMethods, CompletionItemKind.Method);

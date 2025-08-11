@@ -18,7 +18,7 @@ export default async function onHoverHandler(params: TextDocumentPositionParams)
 	if (!info) {
 		return null;
 	}
-	let lexer = info.globalLexer;
+	let lexer = info.lexer;
 
 
 	const position = params.position;

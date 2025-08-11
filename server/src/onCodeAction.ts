@@ -18,7 +18,7 @@ export default async function onCodeActionHandler(params: CodeActionParams): Pro
 	if (!info) {
 		return [];
 	}
-	let lexer = info.globalLexer;
+	let lexer = info.lexer;
 
 	
 	const fixes: CodeAction[] = [];
