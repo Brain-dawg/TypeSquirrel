@@ -59,54 +59,58 @@ export const enum SyntaxKind {
 	DocComment,
 	LineComment,
 
-	AmpersandAmpersandToken,
-	AmpersandToken,
 	AsteriskEqualsToken,
-	AsteriskToken,
-	AtToken,
-	CaretToken,
-	CloseBraceToken,
-	CloseBracketToken,
-	CloseParenthesisToken,
-	ColonColonToken,
-	ColonToken,
-	CommaToken,
-	DotDotDotToken,
-	DotToken,
-	EqualsEqualsToken,
 	EqualsToken,
-	ExclamationToken,
-	GreaterThanEqualsToken,
-	GreaterThanGreaterThanGreaterThanToken,
-	GreaterThanGreaterThanToken,
-	GreaterThanToken,
-	LessMinusToken,
-	LessThanEqualsGreaterThanToken,
-	LessThanEqualsToken,
-	LessThanLessThanToken,
-	LessThanSlashToken,
-	LessThanToken,
-	LineFeedToken,
 	MinusEqualsToken,
-	MinusMinusToken,
-	MinusToken,
-	ExclamationEqualsToken,
-	OpenBraceToken,
-	OpenBracketToken,
-	OpenParenthesisToken,
 	PercentEqualsToken,
-	PercentToken,
-	BarBarToken,
-	BarToken,
 	PlusEqualsToken,
-	PlusPlusToken,
-	PlusToken,
-	QuestionToken,
-	SemicolonToken,
 	SlashEqualsToken,
-	SlashGreaterThanToken,
+	LessMinusToken,
+
+	PlusToken,
+	MinusToken,
+	AsteriskToken,
 	SlashToken,
+	PercentToken,
+	AmpersandToken,
+	BarToken,
+	CaretToken,
+	AmpersandAmpersandToken,
+	BarBarToken,
+	LessThanToken,
+	GreaterThanToken,
+	LessThanEqualsToken,
+	GreaterThanEqualsToken,
+	EqualsEqualsToken,
+	ExclamationEqualsToken,
+	LessThanLessThanToken,
+	GreaterThanGreaterThanToken,
+	GreaterThanGreaterThanGreaterThanToken,
+	LessThanEqualsGreaterThanToken,
+
+	ExclamationToken,
 	TildeToken,
+	PlusPlusToken,
+	MinusMinusToken,
+
+	AtToken,
+	ColonToken,
+	ColonColonToken,
+	CommaToken,
+	SemicolonToken,
+	DotToken,
+	DotDotDotToken,
+	QuestionToken,
+	LineFeedToken,
+
+	OpenBraceToken,
+	CloseBraceToken,
+	OpenBracketToken,
+	CloseBracketToken,
+	OpenParenthesisToken,
+	CloseParenthesisToken,
+	LessThanSlashToken,
+	SlashGreaterThanToken,
 
 	IdentifierToken,
 	FloatToken,
@@ -154,85 +158,97 @@ export const enum SyntaxKind {
 	__FILE__Keyword,
 	__LINE__Keyword,
 
-	FirstKeyword = NullKeyword,
-	LastKeyword = __LINE__Keyword,
-
-
 	NodeArray,
+	BlockStatement,
+	EmptyStatement,
+	ExpressionStatement,
 
 	IfStatement,
-	DoWhileStatement,
 	WhileStatement,
+	DoStatement,
 	ForStatement,
 	ForEachStatement,
-	BreakStatement,
-	ContinueStatement,
-	YieldStatement,
-	ReturnStatement,
+	SwitchStatement,
 	CaseClause,
 	DefaultClause,
-	SwitchStatement,
+	CaseBlock,
 	TryStatement,
 	CatchClause,
+	
+	BreakStatement,
+	ContinueStatement,
+	ReturnStatement,
+	YieldStatement,
 	ThrowStatement,
 
-	Block,
-	EmptyStatement,
-
 	LocalStatement,
-	VariableDeclarationList,
 	VariableDeclaration,
 	ConstStatement,
-
 	FunctionDeclaration,
-	ParameterDeclaration,
-
-	ClassStatement,
+	LocalFunctionDeclaration,
+	ClassDeclaration,
+	ClassExpression,
 	EnumStatement,
+	EnumDeclaration,
+	EnumMember,
 
-
-	ConditionalExpression,
+	TrueLiteral,
+	FalseLiteral,
+	NullLiteral,
+	ThisExpression,
+	BaseExpression,
 	IntegerLiteral,
 	FloatLiteral,
 	StringLiteral,
 	VerbatimStringLiteral,
 	Identifier,
+	VariedArgs,
+
+	ComputedPropertyName,
 	BinaryExpression,
+	ConditionalExpression,
 	PrefixUnaryExpression,
 	PostfixUnaryExpression,
-	NullLiteral,
-	BooleanLiteralExpression,
-	CommaListExpression,
+	ParenthesisedExpression,
+
+	CallExpression,
+	PropertyAccessExpression,
+	ElementAccessExpression,
+	RootAccessExpression,
+
 	DeleteExpression,
 	ResumeExpression,
 	CloneExpression,
+	TypeOfExpression,
+	RawCallExpression,
 	FunctionExpression,
 	LambdaExpression,
-	TypeOfExpression,
-
-	CallExpression,
-	MemberAccessExpression,
-	SubscriptExpression,
 
 
 	ArrayLiteralExpression,
 	TableLiteralExpression,
 
-	ExpressionStatement,
-	CaseBlock,
-	ClassDeclaration,
-	ClassExpression,
+	TableProperty,
+	TableMethod,
+	TableConstructor,
 
-	EnumMember,
-	EnumDeclaration,
-	LocalFunctionDeclaration,
-	MethodDeclaration,
-	ConstructorDeclaration,
-	ParenthesisedExpression,
+	ClassProperty,
+	ClassMethod,
+	ClassConstructor,
+
+	FileLiteral,
+	LineLiteral,
+	
+	SourceFile,
+	
+	FirstKeyword = BaseKeyword,
+	LastKeyword = __LINE__Keyword,
+	FirstAssignment = AsteriskEqualsToken,
+	LastAssignment = LessMinusToken
 };
 
 
-export type Keyword =
+export type KeywordTokenKind =
 	| SyntaxKind.WhileKeyword
 	| SyntaxKind.DoKeyword
 	| SyntaxKind.IfKeyword
@@ -272,29 +288,38 @@ export type Keyword =
 	| SyntaxKind.__FILE__Keyword
 	| SyntaxKind.RawCallKeyword;
 
-export type Comment =
+export type CommentTokenKind =
 	| SyntaxKind.LineComment
 	| SyntaxKind.BlockComment
 	| SyntaxKind.DocComment;
 
-export type String =
+export type StringTokenKind =
 	| SyntaxKind.StringToken
 	| SyntaxKind.VerbatimStringToken;
 
-export type Number =
+export type NumberTokenKind =
 	| SyntaxKind.IntegerToken
 	| SyntaxKind.FloatToken
 
-export type ValuedToken =
-	| Comment
-	| String
-	| Number
-	| Keyword
+export type ValuedTokenKind =
+	| CommentTokenKind
+	| StringTokenKind
+	| NumberTokenKind
+	| KeywordTokenKind
 	| SyntaxKind.IdentifierToken;
 
-export type ValidIdentifier =
+export type ValidIdentifierTokenKind =
 	| SyntaxKind.IdentifierToken
 	| SyntaxKind.ConstructorKeyword;
+
+export type AssignmentOperator =
+	| SyntaxKind.EqualsToken
+	| SyntaxKind.EqualsToken
+	| SyntaxKind.MinusEqualsToken
+	| SyntaxKind.PercentEqualsToken
+	| SyntaxKind.PlusEqualsToken
+	| SyntaxKind.SlashEqualsToken
+	| SyntaxKind.LessMinusToken;
 
 export const TokenToString = new Map<SyntaxKind, string>([
 	[SyntaxKind.EndOfFileToken, 'EOF'],
@@ -394,7 +419,7 @@ export const TokenToString = new Map<SyntaxKind, string>([
 	[SyntaxKind.__LINE__Keyword, '__LINE__'],
 ]);
 
-export const ReservedKeywords = new Map<string, Keyword>([
+export const ReservedKeywords = new Map<string, KeywordTokenKind>([
 	['while', SyntaxKind.WhileKeyword],
 	['do', SyntaxKind.DoKeyword],
 	['if', SyntaxKind.IfKeyword],
@@ -435,27 +460,28 @@ export const ReservedKeywords = new Map<string, Keyword>([
 	['rawcall', SyntaxKind.RawCallKeyword]
 ]);
 
-export function isTokenAKeyword(token: Token<SyntaxKind>): token is Token<Keyword> {
+export function isTokenAKeyword(token: Token<SyntaxKind>): token is Token<KeywordTokenKind> {
 	return token.kind >= SyntaxKind.FirstKeyword && token.kind <= SyntaxKind.LastKeyword;
 }
 
-export function isTokenAValidIdentifier(token: Token<SyntaxKind>): token is Token<ValidIdentifier> {
-	const kind = token.kind;
-	return kind === SyntaxKind.Identifier || kind === SyntaxKind.ConstructorKeyword;
+export function isTokenAValidIdentifier(token: Token<SyntaxKind>): token is Token<ValidIdentifierTokenKind> {
+	return token.kind === SyntaxKind.IdentifierToken || token.kind === SyntaxKind.ConstructorKeyword;
 }
 
-export function isTokenAComment(token: Token<SyntaxKind>): token is Token<Comment> {
-	const kind = token.kind;
-	return kind === SyntaxKind.LineComment || kind === SyntaxKind.BlockComment || kind === SyntaxKind.DocComment;
+export function isTokenAComment(token: Token<SyntaxKind>): token is Token<CommentTokenKind> {
+	return token.kind === SyntaxKind.LineComment || token.kind === SyntaxKind.BlockComment || token.kind === SyntaxKind.DocComment;
 }
 
-export function isTokenTrivia(token: Token<SyntaxKind>): token is Token<Comment | SyntaxKind.LineFeedToken> {
+export function isTokenTrivia(token: Token<SyntaxKind>): token is Token<CommentTokenKind | SyntaxKind.LineFeedToken> {
 	return isTokenAComment(token) || token.kind === SyntaxKind.LineFeedToken;
 }
 
-export function isTokenAString(token: Token<SyntaxKind>): token is StringToken<String> {
-	const kind = token.kind;
-	return kind === SyntaxKind.StringToken || kind === SyntaxKind.VerbatimStringToken;
+export function isTokenAString(token: Token<SyntaxKind>): token is StringToken<StringTokenKind> {
+	return token.kind === SyntaxKind.StringToken || token.kind === SyntaxKind.VerbatimStringToken;
+}
+
+export function isAssignmentOperator(token: Token<SyntaxKind>): token is Token<AssignmentOperator> {
+	return token.kind >= SyntaxKind.FirstAssignment && token.kind <= SyntaxKind.LastAssignment;
 }
 
 export interface ReadonlyTextRange {
@@ -476,17 +502,18 @@ export interface VScriptDiagnostic extends ReadonlyTextRange {
 
 export interface Token<TKind extends SyntaxKind> extends ReadonlyTextRange {
 	readonly kind: TKind;
-	readonly doc?: Token<SyntaxKind.DocComment>;
-	readonly value: TKind extends ValuedToken ? string : undefined;
+	readonly value: TKind extends ValuedTokenKind ? string : undefined;
+	hasPrecedingLineBreak: boolean;
+	doc?: Token<SyntaxKind.DocComment>;
 }
 
 export interface MissingToken<TKind extends SyntaxKind> extends Token<TKind> {
 	readonly isMissing: true;
-	readonly value: TKind extends ValuedToken ? string : undefined;
+	readonly value: TKind extends ValuedTokenKind ? string : undefined;
 }
 
-export interface StringToken<TKind extends SyntaxKind.StringToken | SyntaxKind.VerbatimStringToken>
-	extends Token<SyntaxKind.StringToken | SyntaxKind.VerbatimStringToken> {
+export interface StringToken<TKind extends StringTokenKind>
+	extends Token<StringTokenKind> {
 	readonly kind: TKind;
 	readonly sourcePositions: number[];
 	lexer?: Lexer;
@@ -535,27 +562,35 @@ export interface TokenNode<TKind extends SyntaxKind> extends Node {
 	readonly value?: string;
 }
 
-export interface Declaration extends Node {
-	symbol?: Symbol;
-}
-
 export type PropertyName =
 	| Identifier
 	| StringLiteral
-	| NumericLiteral;
+	| VerbatimStringLiteral
+	| Expression;
 
-export interface ExpressionDeclaration extends Declaration {
-	readonly name: Expression;
-	readonly escaped: string;
+export interface Declaration extends Node {
+	symbol?: Symbol;
 }
 
 export interface NamedDeclaration extends Declaration {
 	readonly name: PropertyName;
 }
 
+export interface DynamicNamedDeclaration extends NamedDeclaration {
+    readonly name: Expression;
+}
+
+
 export interface LocalsContainer extends Node {
 	locals?: SymbolTable;
 }
+
+
+export interface SourceFile extends Node, LocalsContainer {
+	readonly kind: SyntaxKind.SourceFile;
+	readonly statements: NodeArray<Statement>;
+}
+
 
 export interface Statement extends Node { }
 
@@ -563,9 +598,9 @@ export interface EmptyStatement extends Node {
 	readonly kind: SyntaxKind.EmptyStatement;
 }
 
-export interface Block extends Statement {
-	readonly kind: SyntaxKind.Block;
-	readonly body: NodeArray<Statement>;
+export interface BlockStatement extends Statement {
+	readonly kind: SyntaxKind.BlockStatement;
+	readonly statements: NodeArray<Statement>;
 }
 
 export interface ExpressionStatement extends Statement {
@@ -576,15 +611,15 @@ export interface ExpressionStatement extends Statement {
 export interface ConstStatement extends Statement, NamedDeclaration {
 	readonly kind: SyntaxKind.ConstStatement;
 	readonly name: Identifier;
-	readonly initialiser: ScalarLiteralExpression;
+	readonly initialiser: Expression; //ScalarLiteralExpression;
 }
 
 export interface LocalStatement extends Statement {
 	readonly kind: SyntaxKind.LocalStatement;
-	readonly declarationList: NodeArray<VariableDeclaration>;
+	readonly declarations: NodeArray<VariableDeclaration>;
 }
 
-export interface VariableDeclaration extends NamedDeclaration, Node {
+export interface VariableDeclaration extends NamedDeclaration{
 	readonly kind: SyntaxKind.VariableDeclaration;
 	readonly name: Identifier;
 	readonly initialiser?: Expression;
@@ -603,7 +638,7 @@ export interface IterationStatement extends Statement {
 }
 
 export interface DoStatement extends IterationStatement {
-	readonly kind: SyntaxKind.DoWhileStatement;
+	readonly kind: SyntaxKind.DoStatement;
 	readonly expression: Expression;
 }
 
@@ -664,7 +699,7 @@ export type CaseOrDefaultClause =
 
 export interface CaseBlock extends Node, LocalsContainer {
 	readonly kind: SyntaxKind.CaseBlock;
-	readonly parent: SwitchStatement;
+	parent?: SwitchStatement;
 	readonly clauses: NodeArray<CaseOrDefaultClause>;
 }
 
@@ -688,64 +723,83 @@ export interface ThrowStatement extends Statement {
 
 export interface TryStatement extends Statement {
 	readonly kind: SyntaxKind.TryStatement;
-	readonly tryBlock: Statement;
+	readonly tryStatement: Statement;
 	readonly catchClause: CatchClause;
 }
 
 export interface CatchClause extends Node, LocalsContainer {
 	readonly kind: SyntaxKind.CatchClause;
-	readonly parent: TryStatement;
+	parent?: TryStatement;
 	readonly variable: VariableDeclaration;
-	readonly block: Statement;
+	readonly statement: Statement;
 }
 
-export type ClassElement = NamedDeclaration;
 
-export interface ClassLikeDeclarationBase extends ExpressionDeclaration {
+export interface ClassLikeDeclarationBase extends Node {
 	readonly kind: SyntaxKind.ClassDeclaration | SyntaxKind.ClassExpression;
 	// extends ::a.b.c.d {}
-	readonly extends?: Expression;
-	readonly members: NodeArray<ClassElement>;
+	readonly inherits?: Expression;
+	readonly members: NodeArray<ClassMember>;
 }
 
-export interface ClassDeclaration extends ClassLikeDeclarationBase {
+export interface ClassDeclaration extends ClassLikeDeclarationBase, DynamicNamedDeclaration {
 	readonly kind: SyntaxKind.ClassDeclaration;
-	// class ::a.b.c.d {}
-	readonly name: Expression;
 }
 
 export interface ClassExpression extends ClassLikeDeclarationBase {
 	readonly kind: SyntaxKind.ClassExpression;
 }
 
-export type ClassLikeDeclaration = ClassDeclaration | ClassExpression;
-
-export interface EnumMember extends NamedDeclaration {
-	readonly kind: SyntaxKind.EnumMember;
-	readonly parent: EnumDeclaration;
-	readonly name: PropertyName;
-	readonly initializer: ScalarLiteralExpression;
+export interface ClassMember extends Declaration {
+	readonly isStatic: boolean;
 }
+
+export interface ClassProperty extends ClassMember, PropertyElement {
+	readonly kind: SyntaxKind.ClassProperty;
+	// To make this more error tolerant string names are also allowed
+	// readonly name: Identifier | Expression;
+}
+
+export interface ClassMethod extends ClassMember, MethodDeclaration {
+	readonly kind: SyntaxKind.ClassMethod;
+}
+
+export interface ClassConstructor extends ClassMember, ConstructorDeclaration {
+	readonly kind: SyntaxKind.ClassConstructor;
+}
+
 
 export interface EnumDeclaration extends NamedDeclaration {
 	readonly kind: SyntaxKind.EnumDeclaration;
 	readonly name: Identifier;
+	readonly members: NodeArray<EnumMember>;
 }
 
-export interface ParameterDeclaration extends NamedDeclaration {
-	readonly kind: SyntaxKind.ParameterDeclaration;
-	readonly name: Identifier;
-	readonly initialiser?: Expression;
+
+export interface EnumMember extends PropertyElement {
+	readonly kind: SyntaxKind.EnumMember;
+	parent?: EnumDeclaration;
+	// Only the identifiers are allowed, but to make this more error tolerant other property names are also allowed
+	// readonly name: Identifier;
+	readonly initialiser?: Expression; //ScalarLiteralExpression;
 }
+
 
 export interface FunctionLikeDeclarationBase extends Node {
-	readonly parameters: NodeArray<ParameterDeclaration>;
-	readonly ellipsis?: TokenNode<SyntaxKind.DotDotDotToken>;
+	readonly environment?: Expression;
+	readonly parameters: NodeArray<Parameter>;
 }
 
-export interface FunctionDeclaration extends FunctionLikeDeclarationBase, ExpressionDeclaration, LocalsContainer {
+export interface VariedArgs extends Node {
+	readonly kind: SyntaxKind.VariedArgs;
+}
+
+export type Parameter = VariableDeclaration | VariedArgs;
+
+export interface FunctionDeclaration extends FunctionLikeDeclarationBase, DynamicNamedDeclaration, LocalsContainer {
 	readonly kind: SyntaxKind.FunctionDeclaration;
 	// function a::b::c::d() {}
+	readonly name: Identifier | PropertyAccessExpression;
 	readonly statement: Statement;
 }
 
@@ -756,17 +810,13 @@ export interface LocalFunctionDeclaration extends FunctionLikeDeclarationBase, N
 }
 
 export interface MethodDeclaration extends FunctionLikeDeclarationBase, NamedDeclaration, LocalsContainer {
-	readonly kind: SyntaxKind.MethodDeclaration;
-	readonly parent: ClassLikeDeclaration | TableLiteralExpression;
 	readonly name: Identifier;
 	readonly statement: Statement;
 }
 
 export interface ConstructorDeclaration extends FunctionLikeDeclarationBase, LocalsContainer {
-	readonly kind: SyntaxKind.ConstructorDeclaration;
-	readonly parent: ClassLikeDeclaration;
 	// function constructor() {} | constructor() {} both work
-	readonly functionToken?: TokenNode<SyntaxKind.FunctionKeyword>;
+	readonly hasPrecedingFunction: boolean;
 	readonly statement: Statement;
 }
 
@@ -780,11 +830,39 @@ export interface LambdaExpression extends FunctionLikeDeclarationBase {
 	readonly expression: Expression;
 }
 
+export interface PropertyElement extends NamedDeclaration {
+	readonly initialiser?: Expression;
+}
 
+
+export type BinaryOperator =
+	| SyntaxKind.CommaToken
+	| SyntaxKind.BarBarToken
+	| SyntaxKind.AmpersandAmpersandToken
+	| SyntaxKind.BarToken
+	| SyntaxKind.CaretToken
+	| SyntaxKind.AmpersandToken
+	| SyntaxKind.EqualsEqualsToken
+	| SyntaxKind.ExclamationEqualsToken
+	| SyntaxKind.LessThanEqualsGreaterThanToken
+	| SyntaxKind.LessThanToken
+	| SyntaxKind.GreaterThanToken
+	| SyntaxKind.LessThanEqualsToken
+	| SyntaxKind.GreaterThanEqualsToken
+	| SyntaxKind.InstanceOfKeyword
+	| SyntaxKind.InKeyword
+	| SyntaxKind.LessThanLessThanToken
+	| SyntaxKind.GreaterThanGreaterThanToken
+	| SyntaxKind.GreaterThanGreaterThanGreaterThanToken
+	| SyntaxKind.PlusToken
+	| SyntaxKind.MinusToken
+	| SyntaxKind.AsteriskToken
+	| SyntaxKind.SlashToken
+	| SyntaxKind.PercentToken
+	| AssignmentOperator;
 
 export const enum OperatorPrecedence {
-	Comma, // `,`
-	AssignmentOrConditional, // `?`, `=`, `+=`, `-=`, `/=`, `*=`, `%=`, `<-`
+	Lowest, // Used to begin the precedence climbing
 	LogicalOR,  // `||`
 	LogicalAND, // `&&`
 	BitwiseOR, // `|`
@@ -796,28 +874,11 @@ export const enum OperatorPrecedence {
 	Additive, // `+`, `-`
 	Multiplicative, // `*`, `/`, `%`
 
-	Invalid = 1,
-}
-
-export const enum OperatorAssociativity {
-	None,
-	Left,
-	Right,
+	Invalid = -1,
 }
 
 export function getBinaryOperatorPrecedence(kind: SyntaxKind): OperatorPrecedence {
 	switch (kind) {
-	case SyntaxKind.CommaToken:
-		return OperatorPrecedence.Comma;
-	case SyntaxKind.EqualsToken:
-	case SyntaxKind.PlusEqualsToken:
-	case SyntaxKind.MinusEqualsToken:
-	case SyntaxKind.AsteriskEqualsToken:
-	case SyntaxKind.SlashEqualsToken:
-	case SyntaxKind.PercentEqualsToken:
-	case SyntaxKind.LessMinusToken:
-	case SyntaxKind.QuestionToken:
-		return OperatorPrecedence.AssignmentOrConditional;
 	case SyntaxKind.BarBarToken:
 		return OperatorPrecedence.LogicalOR;
 	case SyntaxKind.AmpersandAmpersandToken:
@@ -831,7 +892,7 @@ export function getBinaryOperatorPrecedence(kind: SyntaxKind): OperatorPrecedenc
 	case SyntaxKind.EqualsEqualsToken:
 	case SyntaxKind.ExclamationEqualsToken:
 	case SyntaxKind.LessThanEqualsGreaterThanToken:
-        return OperatorPrecedence.Equality;
+		return OperatorPrecedence.Equality;
 	case SyntaxKind.LessThanToken:
 	case SyntaxKind.GreaterThanToken:
 	case SyntaxKind.LessThanEqualsToken:
@@ -864,8 +925,18 @@ export interface Expression extends Node {
 export interface UnaryExpression extends Expression {
 
 }
-export interface PrimaryExpression extends Expression {
 
+export interface LeftHandSideExpression extends UnaryExpression {
+
+}
+
+export interface PrimaryExpression extends LeftHandSideExpression {
+
+}
+
+export interface RootAccessExpression extends PrimaryExpression {
+	readonly kind: SyntaxKind.RootAccessExpression;
+	readonly name: Identifier;
 }
 
 export interface ParenthesisedExpression extends PrimaryExpression {
@@ -875,12 +946,21 @@ export interface ParenthesisedExpression extends PrimaryExpression {
 
 
 export interface ThisExpression extends PrimaryExpression {
-	readonly kind: SyntaxKind.ThisKeyword;
+	readonly kind: SyntaxKind.ThisExpression;
 }
 
 export interface BaseExpression extends PrimaryExpression {
-	readonly kind: SyntaxKind.BaseKeyword;
+	readonly kind: SyntaxKind.BaseExpression;
 }
+
+export interface FileExpression extends PrimaryExpression {
+	readonly kind: SyntaxKind.FileLiteral;
+}
+
+export interface LineLiteral extends PrimaryExpression {
+	readonly kind: SyntaxKind.LineLiteral;
+}
+
 
 export interface DeleteExpression extends UnaryExpression {
 	readonly kind: SyntaxKind.DeleteExpression;
@@ -902,43 +982,59 @@ export interface CloneExpression extends UnaryExpression {
 	readonly expression: UnaryExpression;
 }
 
+export interface CallLikeBase {
+	readonly argumentExpressions: NodeArray<Expression>;
+	readonly postCallInitialisation?: NodeArray<TableLiteralMember>;
+}
 
-export interface LiteralExpression {
+export interface RawCallExpression extends CallLikeBase, UnaryExpression {
+	readonly kind: SyntaxKind.RawCallExpression;
+}
+
+export interface LiteralExpression extends PrimaryExpression {
 	readonly value: string;
 }
 
-export interface NumericLiteral extends PrimaryExpression, LiteralExpression {
-	readonly kind: SyntaxKind.IntegerLiteral | SyntaxKind.FloatLiteral;
+export interface IntegerLiteral extends LiteralExpression {
+	readonly kind: SyntaxKind.IntegerLiteral
 }
 
-export interface StringLiteral extends PrimaryExpression, LiteralExpression {
-	readonly kind: SyntaxKind.StringLiteral | SyntaxKind.VerbatimStringLiteral;
+export interface FloatLiteral extends LiteralExpression {
+	readonly kind: SyntaxKind.FloatLiteral;
 }
 
-export interface Identifier extends PrimaryExpression, LiteralExpression {
+export interface StringLiteral extends LiteralExpression {
+	readonly kind: SyntaxKind.StringLiteral;
+}
+
+export interface VerbatimStringLiteral extends LiteralExpression {
+	readonly kind: SyntaxKind.VerbatimStringLiteral;
+}
+
+export interface Identifier extends LiteralExpression {
 	readonly kind: SyntaxKind.Identifier;
 }
 
-
 export interface NullLiteral extends PrimaryExpression {
-	readonly kind: SyntaxKind.NullKeyword;
+	readonly kind: SyntaxKind.NullLiteral;
 }
 
 export interface TrueLiteral extends PrimaryExpression {
-	readonly kind: SyntaxKind.TrueKeyword;
+	readonly kind: SyntaxKind.TrueLiteral;
 }
 
 export interface FalseLiteral extends PrimaryExpression {
-	readonly kind: SyntaxKind.FalseKeyword;
+	readonly kind: SyntaxKind.FalseLiteral;
 }
 
 export type BooleanLiteral = TrueLiteral | FalseLiteral;
-
+/*
 export type ScalarLiteralExpression =
 	| NumericLiteral
 	| StringLiteral
-	| BooleanLiteral;
-
+	| BooleanLiteral
+	// -1 -1.0
+	| PrefixUnaryExpression;*/
 
 export type PostfixUnaryOperator =
 	| SyntaxKind.PlusPlusToken
@@ -947,7 +1043,7 @@ export type PostfixUnaryOperator =
 export interface PostfixUnaryExpression extends UnaryExpression {
 	readonly kind: SyntaxKind.PostfixUnaryExpression;
 	readonly operand: Expression;
-	readonly operator: TokenNode<PostfixUnaryOperator>;
+	readonly operator: PostfixUnaryOperator;
 }
 
 export type PrefixUnaryOperator =
@@ -956,20 +1052,19 @@ export type PrefixUnaryOperator =
 	| SyntaxKind.PlusToken
 	| SyntaxKind.MinusToken
 	| SyntaxKind.TildeToken
-	| SyntaxKind.ExclamationToken
-	| SyntaxKind.ColonColonToken;
+	| SyntaxKind.ExclamationToken;
 
 export interface PrefixUnaryExpression extends UnaryExpression {
 	readonly kind: SyntaxKind.PrefixUnaryExpression;
-	readonly operator: TokenNode<PrefixUnaryOperator>;
+	readonly operator: PrefixUnaryOperator;
 	readonly operand: UnaryExpression;
 }
 
 export interface BinaryExpression extends Expression {
 	readonly kind: SyntaxKind.BinaryExpression;
 	readonly left: Expression;
+	readonly operator: BinaryOperator;
 	readonly right: Expression;
-	readonly operator: TokenNode<SyntaxKind>;
 }
 
 
@@ -977,24 +1072,24 @@ export interface ConditionalExpression extends Expression {
 	readonly kind: SyntaxKind.ConditionalExpression;
 	readonly condition: Expression;
 	readonly whenTrue: Expression;
-	// whenFalse is not allowed to be undefined by default, but since the user can skip writing a `:` that could usually be the case
-	readonly whenFalse?: Expression;
+	readonly whenFalse: Expression;
 }
 
-export interface MemberAccessExpression extends Expression {
-	readonly kind: SyntaxKind.MemberAccessExpression;
-	readonly member: Identifier;
+export interface PropertyAccessExpression extends LeftHandSideExpression {
+	readonly kind: SyntaxKind.PropertyAccessExpression;
+	readonly expression: LeftHandSideExpression;
+	readonly property: Identifier;
 }
 
-export interface SubscriptExpression extends Expression {
-	readonly kind: SyntaxKind.SubscriptExpression;
-	readonly expression: Expression;
+export interface ElementAccessExpression extends LeftHandSideExpression {
+	readonly kind: SyntaxKind.ElementAccessExpression;
+	readonly expression: LeftHandSideExpression;
+	readonly argumentExpression: Expression;
 }
 
-export interface CallExpression extends Expression {
+export interface CallExpression extends CallLikeBase, LeftHandSideExpression {
 	readonly kind: SyntaxKind.CallExpression;
-	readonly expression: Expression;
-	readonly arguments: NodeArray<Expression>;
+	readonly expression: LeftHandSideExpression;
 }
 
 
@@ -1003,9 +1098,269 @@ export interface ArrayLiteralExpression extends PrimaryExpression {
 	readonly elements: NodeArray<Expression>
 }
 
+
+
 export interface TableLiteralExpression extends PrimaryExpression {
 	readonly kind: SyntaxKind.TableLiteralExpression,
-	readonly elements: {
-		[name: string]: Expression
+	readonly members: NodeArray<TableLiteralMember>
+}
+
+export interface TableLiteralMember extends Declaration {
+	
+}
+
+export interface TableProperty extends TableLiteralMember, PropertyElement {
+	readonly kind: SyntaxKind.TableProperty;
+}
+
+export interface TableMethod extends MethodDeclaration, TableLiteralMember {
+	readonly kind: SyntaxKind.TableMethod;
+}
+
+export interface TableConstructor extends ConstructorDeclaration, LocalsContainer {
+	readonly kind: SyntaxKind.TableConstructor;
+}
+
+export function isValidSlotExpression(kind: SyntaxKind) {
+	switch (kind) {
+	case SyntaxKind.PropertyAccessExpression:
+	case SyntaxKind.ElementAccessExpression:
+	case SyntaxKind.RootAccessExpression:
+	case SyntaxKind.Identifier:
+	case SyntaxKind.ConstructorKeyword:
+		return true;
+	default:
+		return false;
+	}
+}
+
+export function isLeftHandSideExpression(kind: SyntaxKind) {
+	switch (kind) {
+	case SyntaxKind.PropertyAccessExpression:
+	case SyntaxKind.ElementAccessExpression:
+	case SyntaxKind.RootAccessExpression:
+	case SyntaxKind.CallExpression:
+	case SyntaxKind.ArrayLiteralExpression:
+	case SyntaxKind.ParenthesisedExpression:
+	case SyntaxKind.TableLiteralExpression:
+	case SyntaxKind.ClassExpression:
+	case SyntaxKind.FunctionExpression:
+	case SyntaxKind.Identifier:
+	case SyntaxKind.IntegerLiteral:
+	case SyntaxKind.FloatLiteral:
+	case SyntaxKind.StringLiteral:
+	case SyntaxKind.VerbatimStringLiteral:
+	case SyntaxKind.TrueLiteral:
+	case SyntaxKind.FalseLiteral:
+	case SyntaxKind.NullLiteral:
+	case SyntaxKind.ThisExpression:
+	case SyntaxKind.BaseExpression:
+	case SyntaxKind.FileLiteral:
+	case SyntaxKind.LineLiteral:
+		return true;
+	default:
+		return false;
+	}
+}
+
+export const TokenToExpression = new Map<SyntaxKind, SyntaxKind>([
+	[SyntaxKind.ThisKeyword, SyntaxKind.ThisExpression],
+	[SyntaxKind.BaseKeyword, SyntaxKind.BaseExpression],
+	[SyntaxKind.NullKeyword, SyntaxKind.NullLiteral],
+	[SyntaxKind.TrueKeyword, SyntaxKind.TrueLiteral],
+	[SyntaxKind.FalseKeyword, SyntaxKind.FalseLiteral],
+	[SyntaxKind.__FILE__Keyword, SyntaxKind.FileLiteral],
+	[SyntaxKind.__LINE__Keyword, SyntaxKind.LineLiteral],
+	
+	[SyntaxKind.StringToken, SyntaxKind.StringLiteral],
+	[SyntaxKind.VerbatimStringToken, SyntaxKind.VerbatimStringLiteral],
+	[SyntaxKind.IntegerToken, SyntaxKind.IntegerLiteral],
+	[SyntaxKind.FloatToken, SyntaxKind.FloatLiteral],
+]);
+
+type ForEachChildFunction<TNode extends Node> = (node: TNode, callback: (childNode: Node) => void) => void;
+type ForEachChildTable = { [kind in SyntaxKind]?: ForEachChildFunction<any>; }
+
+const forEachChildTable: ForEachChildTable = {
+	[SyntaxKind.NodeArray]: function(node: NodeArray<Node>, callback: (childNode: Node) => void): void {
+		for (const element of node.elements) {
+			callback(element);
+		}
+	},
+	[SyntaxKind.BlockStatement]: function(node: BlockStatement, callback: (childNode: Node) => void): void {
+		callback(node.statements);
+	},
+	[SyntaxKind.IfStatement]: function (node: IfStatement, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+		callback(node.thenStatement);
+		if (node.elseStatement) {
+			callback(node.elseStatement);
+		}
+	},
+	[SyntaxKind.ExpressionStatement]: function(node: ExpressionStatement, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+	},
+	[SyntaxKind.LocalStatement]: function(node: LocalStatement, callback: (childNode: Node) => void): void {
+		callback(node.declarations);
+	},
+	[SyntaxKind.VariableDeclaration]: function(node: VariableDeclaration, callback: (childNode: Node) => void): void {
+		callback(node.name);
+		if (node.initialiser) {
+			callback(node.initialiser);
+		}
+	},
+	[SyntaxKind.ForStatement]: function(node: ForStatement, callback: (childNode: Node) => void): void {
+		if (node.initialiser) {
+			callback(node.initialiser);
+		}
+		if (node.condition) {
+			callback(node.condition);
+		}
+		if (node.incrementor) {
+			callback(node.incrementor);
+		}
+		callback(node.statement);
+	},
+	[SyntaxKind.WhileStatement]: function(node: WhileStatement, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+		callback(node.statement);
+	},
+	[SyntaxKind.DoStatement]: function(node: DoStatement, callback: (childNode: Node) => void): void {
+		callback(node.statement);
+		callback(node.expression);
+	},
+	[SyntaxKind.ForEachStatement]: function(node: ForEachStatement, callback: (childNode: Node) => void): void {
+		if (node.index) {
+			callback(node.index);
+		}
+		callback(node.value);
+		callback(node.iterable);
+		callback(node.statement);
+	},
+	[SyntaxKind.SwitchStatement]: function(node: SwitchStatement, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+		callback(node.caseBlock);
+	},
+	[SyntaxKind.TryStatement]: function(node: TryStatement, callback: (childNode: Node) => void): void {
+		callback(node.tryStatement);
+		callback(node.catchClause);
+	},
+	[SyntaxKind.CatchClause]: function(node: CatchClause, callback: (childNode: Node) => void): void {
+		callback(node.variable);
+		callback(node.statement);
+	},
+	[SyntaxKind.FunctionDeclaration]: function(node: FunctionDeclaration, callback: (childNode: Node) => void): void {
+		callback(node.name);
+		callback(node.parameters);
+		callback(node.statement);
+	},
+	[SyntaxKind.LocalFunctionDeclaration]: function(node: LocalFunctionDeclaration, callback: (childNode: Node) => void): void {
+		callback(node.name);
+		callback(node.parameters);
+		callback(node.statement);
+	},
+	[SyntaxKind.ReturnStatement]: function(node: ReturnStatement, callback: (childNode: Node) => void): void {
+		if (node.expression) {
+			callback(node.expression);
+		}
+	},
+	[SyntaxKind.YieldStatement]: function(node: YieldStatement, callback: (childNode: Node) => void): void {
+		if (node.expression) {
+			callback(node.expression);
+		}
+	},
+	[SyntaxKind.ThrowStatement]: function(node: ThrowStatement, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+	},
+	[SyntaxKind.ClassDeclaration]: function(node: ClassDeclaration, callback: (childNode: Node) => void): void {
+		callback(node.name);
+		if (node.inherits) {
+			callback(node.inherits);
+		}
+		callback(node.members);
+	},
+	[SyntaxKind.TableMethod]: function(node: MethodDeclaration, callback: (childNode: Node) => void): void {
+		callback(node.name);
+		callback(node.parameters);
+		callback(node.statement);
+	},
+	[SyntaxKind.TableConstructor]: function(node: ConstructorDeclaration, callback: (childNode: Node) => void): void {
+		callback(node.parameters);
+		callback(node.statement);
+	},
+	[SyntaxKind.EnumDeclaration]: function(node: EnumDeclaration, callback: (childNode: Node) => void): void {
+		callback(node.name);
+	},
+	[SyntaxKind.EnumMember]: function(node: EnumMember, callback: (childNode: Node) => void): void {
+		callback(node.name);
+		if (node.initialiser) {	
+			callback(node.initialiser);
+		}
+	},
+	[SyntaxKind.CaseClause]: function(node: CaseClause, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+		callback(node.statements);
+	},
+	[SyntaxKind.DefaultClause]: function(node: DefaultClause, callback: (childNode: Node) => void): void {
+		callback(node.statements);
+	},
+	[SyntaxKind.BinaryExpression]: function(node: BinaryExpression, callback: (childNode: Node) => void): void {
+		callback(node.left);
+		callback(node.right);
+	},
+	[SyntaxKind.CallExpression]: function(node: CallExpression, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+		callback(node.argumentExpressions);
+	},
+	[SyntaxKind.PropertyAccessExpression]: function (node: PropertyAccessExpression, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+		callback(node.property);
+	},
+	[SyntaxKind.ElementAccessExpression]: function(node: ElementAccessExpression, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+		callback(node.argumentExpression);
+	},
+	[SyntaxKind.ArrayLiteralExpression]: function(node: ArrayLiteralExpression, callback: (childNode: Node) => void): void {
+		callback(node.elements);
+	},
+	[SyntaxKind.TableLiteralExpression]: function(node: TableLiteralExpression, callback: (childNode: Node) => void): void {
+		// Table elements are not nodes, they're expressions in an object
+		callback(node.members);
+	},
+	[SyntaxKind.ParenthesisedExpression]: function(node: ParenthesisedExpression, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+	},
+	[SyntaxKind.PrefixUnaryExpression]: function(node: PrefixUnaryExpression, callback: (childNode: Node) => void): void {
+		callback(node.operand);
+	},
+	[SyntaxKind.PostfixUnaryExpression]: function(node: PostfixUnaryExpression, callback: (childNode: Node) => void): void {
+		callback(node.operand);
+	},
+	[SyntaxKind.ConditionalExpression]: function(node: ConditionalExpression, callback: (childNode: Node) => void): void {
+		callback(node.condition);
+		callback(node.whenTrue);
+		callback(node.whenFalse);
+	},
+	[SyntaxKind.DeleteExpression]: function(node: DeleteExpression, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+	},
+	[SyntaxKind.ResumeExpression]: function(node: ResumeExpression, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+	},
+	[SyntaxKind.CloneExpression]: function(node: CloneExpression, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+	},
+	[SyntaxKind.TypeOfExpression]: function(node: TypeOfExpression, callback: (childNode: Node) => void): void {
+		callback(node.expression);
+	},
+	[SyntaxKind.RootAccessExpression]: function (node: RootAccessExpression, callback: (childNode: Node) => void): void {
+		callback(node.name);
+	}
+};
+
+export function forEachChild(node: Node, callback: (childNode: Node) => void): void {
+	const forEachChildFunction = forEachChildTable[node.kind];
+	if (forEachChildFunction) {
+		forEachChildFunction(node, callback);
 	}
 }

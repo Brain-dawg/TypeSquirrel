@@ -1,8 +1,8 @@
 import CharCode from './charCode';
 import * as globals from './globals';
-import { Doc, Token, VScriptDiagnostic, SyntaxKind, isTokenAComment, StringToken, ReservedKeywords, isTokenAString, DiagnosticSeverity, ReadonlyTextRange, ValuedToken, Keyword, } from './types';
-
-type TokenFunction = () => Token<ValuedToken>;
+import { Doc, Token, VScriptDiagnostic, StringTokenKind, SyntaxKind, isTokenAComment, StringToken, ReservedKeywords, isTokenAString, DiagnosticSeverity, ReadonlyTextRange, ValuedTokenKind, KeywordTokenKind, } from './types';
+// Return null in case we want to continue the main loop
+type TokenFunction = () => Token<ValuedTokenKind> | null;
 
 type TokenValidator = SyntaxKind | TokenMap | TokenFunction
 
@@ -16,7 +16,7 @@ const enum FloatStatus {
 	None,
 	FoundDot, // Can only meet numbers, e or E, after this point
 	FoundE // Can only meet numbers after this point
-}
+}	
 
 export class Lexer {
 	private readonly text: string;
@@ -26,11 +26,14 @@ export class Lexer {
 
 	private readEOF: boolean;
 
-	private previousToken?: Token<SyntaxKind>;
-	private currentToken?: Token<SyntaxKind>;
-
 	private start: number;
 	private textStart: number;
+
+	private token?: Token<SyntaxKind>;
+	private lastEnd: number;
+
+	private doc: Token<SyntaxKind.DocComment> | undefined;
+	private hasPrecedingLineBreak: boolean;
 
 	private readonly tokens: Token<SyntaxKind>[];
 
@@ -38,10 +41,10 @@ export class Lexer {
 	private readonly diagnostics: VScriptDiagnostic[];
 
 	private readonly tokenMap: TokenMap = {
-		'\r': SyntaxKind.Trivia,
-		' ': SyntaxKind.Trivia,
-		'\t': SyntaxKind.Trivia,
-		'\n': SyntaxKind.LineFeedToken,
+		'\r': this.lexTrivia.bind(this),
+		' ': this.lexTrivia.bind(this),
+		'\t': this.lexTrivia.bind(this),
+		'\n': this.lexLineFeed.bind(this),
 		'#': this.lexLineComment.bind(this),
 		'/': {
 			'*': this.lexBlockComment.bind(this),
@@ -98,7 +101,7 @@ export class Lexer {
 		'.': {
 			'.': {
 				'.': SyntaxKind.DotDotDotToken,
-				fallback: SyntaxKind.Invalid,
+				fallback: this.lexInvalidToken.bind(this)
 			},
 			fallback: SyntaxKind.DotToken
 		},
@@ -203,7 +206,7 @@ export class Lexer {
 		'8': this.lexNumber.bind(this),
 		'9': this.lexNumber.bind(this),
 
-		fallback: SyntaxKind.Invalid
+		fallback: this.lexInvalidCharacter.bind(this)
 	};
 
 	constructor(text: string, sourcePositions?: number[]) {
@@ -216,7 +219,11 @@ export class Lexer {
 		this.start = 0;
 		this.textStart = 0;
 
+		this.lastEnd = 0;
+
 		this.tokens = [];
+
+		this.hasPrecedingLineBreak = false;
 
 		this.sourcePositions = sourcePositions ?? Array.from({ length: text.length + 1 }, (_, i) => i);
 
@@ -238,12 +245,17 @@ export class Lexer {
 			return;
 		}
 
-		if (this.cursor !== this.text.length) {
+		if (this.cursor < this.text.length) {
 			this.current = this.text[this.cursor++];
 		} else {
 			this.readEOF = true;
 			this.current = '';
+			this.cursor++;
 		}
+	}
+
+	public get lastTokenEnd(): number {
+		return this.lastEnd;
 	}
 
 	private getSourcePosition(offset: number = 0): number {
@@ -252,11 +264,7 @@ export class Lexer {
 		return this.sourcePositions[Math.min(index, this.sourcePositions.length - 1)];
 	}
 
-	public getPreviousToken(): Token<SyntaxKind> | undefined {
-		return this.previousToken;
-	}
-
-	private diagnostic(message: string, start?: number, end?: number, severity: DiagnosticSeverity = DiagnosticSeverity.Error): VScriptDiagnostic | undefined {
+	private diagnostic(message: string, start?: number, end?: number, severity: DiagnosticSeverity = DiagnosticSeverity.Error): void {
 		if (start === undefined) {
 			start = this.getSourcePosition(-1);
 			end = this.getSourcePosition(0);
@@ -264,18 +272,15 @@ export class Lexer {
 			end = this.getSourcePosition(0);
 		}
 		
-		let result: VScriptDiagnostic | undefined;
 		const length = this.diagnostics.length;
 		if (length === 0 || this.diagnostics[length - 1].start !== start) {
-			result = {
+			this.diagnostics.push({
 				start,
 				end,
 				message,
 				severity
-			};
-			this.diagnostics.push(result);
+			});
 		}
-		return result;
 	}
 
 	public getErrors(): VScriptDiagnostic[] {
@@ -291,10 +296,55 @@ export class Lexer {
 		return map.fallback;
 	}
 
-	private updateTokens(token: Token<SyntaxKind>): void {
+	private simpleToken<T extends SyntaxKind>(kind: T): Token<T> {
+		const end = this.getSourcePosition(-1);
+		return {
+			kind,
+			start: this.start,
+			end,
+			hasPrecedingLineBreak: false
+		} as Token<T>;
+	}
+
+	private textSliceToken<T extends ValuedTokenKind>(kind: T): Token<T> {
+		const end = this.getSourcePosition(-1);
+		const textEnd = this.cursor - 1;
+		return {
+			kind,
+			start: this.start,
+			end,
+			value: this.text.slice(this.textStart, textEnd),
+			hasPrecedingLineBreak: false
+		} as Token<T>;
+	}
+
+	private tokenWithValue<T extends StringTokenKind>(kind: T, value: string, end: number, sourcePositions: number[]): StringToken<T>;
+	private tokenWithValue<T extends ValuedTokenKind>(kind: T, value: string, end: number): Token<T>
+	private tokenWithValue<T extends ValuedTokenKind>(kind: T, value: string, end: number, sourcePositions?: number[]): Token<T> | StringToken<StringTokenKind> {
+		return {
+			kind,
+			start: this.start,
+			end,
+			value,
+			hasPrecedingLineBreak: false,
+			sourcePositions
+		} as T extends StringTokenKind ? StringToken<T> : Token<T>;
+	}
+
+	private finishToken<T extends SyntaxKind>(token: Token<T>): Token<T> {
+		this.lastEnd = this.token ? this.token.end : 0;
+
 		this.tokens.push(token);
-		this.previousToken = this.currentToken;
-		this.currentToken = token;
+		if (this.doc) {
+			token.doc = this.doc;
+			this.doc = undefined;
+		}
+		if (this.hasPrecedingLineBreak) {
+			token.hasPrecedingLineBreak = true;
+			this.hasPrecedingLineBreak = false;
+		}
+		
+		return this.token = token;
 	}
 
 	public getTokens(): Token<SyntaxKind>[] {
@@ -302,38 +352,25 @@ export class Lexer {
 	}
 
 	public lex(): Token<SyntaxKind> {
+		if (this.readEOF) {
+			if (this.tokens.length !== 0) {
+				const lastToken = this.tokens[this.tokens.length - 1];
+				if (lastToken.kind === SyntaxKind.EndOfFileToken) {
+					return lastToken;
+				} 
+			}
+			return this.finishToken(this.lexEndOfFileToken());
+		}
+
 		let previousEntry: TokenMap | undefined;
 
 		while (true) {
 			let entry: TokenMap | SyntaxKind | TokenFunction;
 			if (!previousEntry) {
-				if (this.readEOF) {
-					const position = this.getSourcePosition();
-					const token: Token<SyntaxKind.EndOfFileToken> = {
-						kind: SyntaxKind.EndOfFileToken,
-						start: position,
-						end: position
-					} as Token<SyntaxKind.EndOfFileToken>;
-					this.updateTokens(token);
-					return token;
-				}
-
 				this.start = this.getSourcePosition(-1);
 				this.textStart = this.cursor - 1;
 
 				entry = this.advanceOrFallback(this.tokenMap);
-				
-				switch (entry) {
-				case SyntaxKind.Invalid:
-					this.diagnostic("Invalid token.", this.start);
-					this.next();
-					continue;
-				case SyntaxKind.Trivia:
-					continue;
-				case SyntaxKind.LineFeedToken:
-					this.currentToken = this.simpleToken(entry);
-					continue;
-				}
 			} else if (this.readEOF) {
 				entry = previousEntry.fallback;
 			} else {
@@ -341,62 +378,69 @@ export class Lexer {
 			}
 			
 			if (typeof entry === "number") {
-				if (entry === SyntaxKind.Invalid) {
-					this.diagnostic("Invalid token.", this.start, this.getSourcePosition(-1));
-					previousEntry = undefined;
-					continue;
-				}
-
-				const token = this.simpleToken(entry);
-				this.updateTokens(token);
-				return token;
+				return this.finishToken(this.simpleToken(entry));
 			}
 
 			if (typeof entry === "function") {
 				const token = entry();
-				if (isTokenAComment(token)) {
+				if (!token) {
+					if (this.readEOF) {
+						return this.finishToken(this.lexEndOfFileToken());
+					}
+
 					previousEntry = undefined;
 					continue;
 				}
 
-				this.updateTokens(token);
-				return token;
+				return this.finishToken(token);
 			}
 
 			previousEntry = entry;
 		}
 	}
-	
-	private simpleToken<T extends SyntaxKind>(kind: T): Token<T> {
-		const end = this.getSourcePosition(-1);
+
+	private lexEndOfFileToken(): Token<SyntaxKind.EndOfFileToken> {
+		const position = this.getSourcePosition();
 		return {
-			kind,
-			start: this.start,
-			end
-		} as Token<T>;
+			kind: SyntaxKind.EndOfFileToken,
+			start: position,
+			end: position
+		} as Token<SyntaxKind.EndOfFileToken>;
 	}
 
-	private textSliceToken<T extends ValuedToken>(kind: T): Token<T> {
-		const end = this.getSourcePosition(-1);
-		const textEnd = this.cursor - 1;
-		return {
-			kind,
-			start: this.start,
-			end,
-			value: this.text.slice(this.textStart, textEnd)
-		} as Token<T>;
+	private lexTrivia(): null {
+		return null;
 	}
 
-	private lexBlockComment(): Token<SyntaxKind.BlockComment | SyntaxKind.DocComment> {
-		let kind = SyntaxKind.BlockComment;
+	private lexLineFeed(): null {
+		const token = this.simpleToken(SyntaxKind.LineFeedToken);
+		this.tokens.push(token);
+		this.hasPrecedingLineBreak = true;
+		return null;
+	}
+
+	private lexInvalidCharacter(): null {
+		this.diagnostic("Invalid character.", this.start);
 		this.next();
+		return null;
+	}
+
+	private lexInvalidToken(): null {
+		this.diagnostic("Invalid token.", this.start, this.getSourcePosition(-1));
+		return null;
+	}
+
+	private lexBlockComment(): null {
+		let kind = SyntaxKind.BlockComment;
 		if (this.charCode() === CharCode.ASTERISK) {
 			this.next();
 			// /**/
 			if (this.charCode() === CharCode.SLASH) {
 				this.next();
 
-				return this.textSliceToken(kind);
+				const token = this.textSliceToken(kind);
+				this.tokens.push(token);
+				return null;
 			}
 			kind = SyntaxKind.DocComment;
 		}
@@ -410,20 +454,33 @@ export class Lexer {
 				
 				this.next();
 
-				return this.textSliceToken(kind);
+				const token = this.textSliceToken(kind);
+				if (kind === SyntaxKind.DocComment) {
+					this.doc = token as Token<SyntaxKind.DocComment>;
+				}
+				this.tokens.push(token);
+				return null;
 			}
 			this.next();
 		}
+
 		this.diagnostic("'*/' expected.", this.getSourcePosition());
-		return this.textSliceToken(kind);
+		const token = this.textSliceToken(kind);
+		if (kind === SyntaxKind.DocComment) {
+			this.doc = token as Token<SyntaxKind.DocComment>;
+		}
+		this.tokens.push(token);
+		return null;
 	}
 
-	private lexLineComment(): Token<SyntaxKind.LineComment> {
+	private lexLineComment(): null {
 		while (!this.readEOF && this.charCode() !== CharCode.LINE_FEED) {
 			this.next();
 		}
 
-		return this.textSliceToken(SyntaxKind.LineComment);
+		const token = this.textSliceToken(SyntaxKind.LineComment);
+		this.tokens.push(token);
+		return null;
 	}
 
 	private lexVerbatimString(): StringToken<SyntaxKind.VerbatimStringToken> {
@@ -438,13 +495,7 @@ export class Lexer {
 			if (charCode === opening) {
 				this.next();
 				if (this.charCode() !== opening) {
-					return {
-						kind,
-						start: this.start,
-						end: this.getSourcePosition(),
-						value,
-						sourcePositions
-					};
+					return this.tokenWithValue(kind, value, this.getSourcePosition(), sourcePositions);
 				}
 			}
 
@@ -455,13 +506,7 @@ export class Lexer {
 
 		this.diagnostic("Unterminated string literal.");
 
-		return {
-			kind,
-			start: this.start,
-			end: this.getSourcePosition(),
-			value,
-			sourcePositions
-		};
+		return this.tokenWithValue(kind, value, this.getSourcePosition(), sourcePositions);
 	}
 
 	private lexStringOrCharacter(): StringToken<SyntaxKind.StringToken> | Token<SyntaxKind.IntegerToken> {
@@ -479,13 +524,13 @@ export class Lexer {
 				const end = this.getSourcePosition();
 				if (kind === SyntaxKind.StringToken) {
 					this.next();
-					return { kind, value, start: this.start, end, sourcePositions };
+					return this.tokenWithValue(kind, value, this.getSourcePosition(), sourcePositions);
 				}
 
 				if (value.length === 0) {
 					this.diagnostic("Hexadecimal number expected.", this.start);
 					this.next();
-					return { kind, value: '0', start: this.start, end };
+					return this.tokenWithValue(kind, '0', this.getSourcePosition());
 				}
 
 				if (value.length > 1) {
@@ -493,10 +538,15 @@ export class Lexer {
 				}
 
 				this.next();
-				return { kind, value: value.charCodeAt(0).toString(), start: this.start, end };
+				return this.tokenWithValue(kind, value.charCodeAt(0).toString(), this.getSourcePosition());
 			case CharCode.LINE_FEED:
-				this.diagnostic(`Unterminated ${kind === SyntaxKind.StringToken ? "string" : "character"} literal.`);
-				return { kind, value, start: this.start, end: this.getSourcePosition(-2), sourcePositions };
+				if (kind === SyntaxKind.StringToken) {
+					this.diagnostic("Unterminated string literal.");
+					return this.tokenWithValue(kind, value, this.getSourcePosition(-2), sourcePositions);
+				} else {
+					this.diagnostic("Unterminated character literal.");
+					return this.tokenWithValue(kind, value, this.getSourcePosition(-2));
+				}
 			case CharCode.BACKTICK:
 				value += '"';
 				break;
@@ -568,8 +618,13 @@ export class Lexer {
 			this.next();
 		}
 
-		this.diagnostic(`Unterminated ${kind === SyntaxKind.StringToken ? "string" : "character"} literal.`);
-		return { kind, value, start: this.start, end: this.getSourcePosition(), sourcePositions };
+		if (kind === SyntaxKind.StringToken) {
+			this.diagnostic("Unterminated string literal.");
+			return this.tokenWithValue(kind, value, this.getSourcePosition(), sourcePositions);
+		} else {
+			this.diagnostic("Unterminated character literal.");
+			return this.tokenWithValue(kind, value, this.getSourcePosition());
+		}
 	}
 
 	private lexNumber(): Token<SyntaxKind.IntegerToken | SyntaxKind.FloatToken> {
@@ -581,12 +636,10 @@ export class Lexer {
 		if (first === CharCode.N0) {
 			if (CharCode.isOctal(charCode)) {
 				const value = this.lexOctal();
-				const end = this.getSourcePosition(-1);
-				return { kind, value, start: this.start, end };
+				return this.tokenWithValue(kind, value, this.getSourcePosition(-1));
 			} else if (charCode === CharCode.x || charCode === CharCode.X) {
 				const value = this.lexHexadecimal();
-				const end = this.getSourcePosition(-1);
-				return { kind, value, start: this.start, end };
+				return this.tokenWithValue(kind, value, this.getSourcePosition(-1));
 			} else {
 				leadingZero = {
 					start: this.getSourcePosition(-2),
@@ -680,7 +733,7 @@ export class Lexer {
 			this.diagnostic("Trailing part.", trailingPart, end, DiagnosticSeverity.Warning);
 		}
 		
-		return { kind, value, start: this.start, end };
+		return this.tokenWithValue(kind, value, end);
 	}
 
 	private lexHexEscape(maxDigits: number): string {
@@ -762,20 +815,14 @@ export class Lexer {
 		return result.toString();
 	}
 
-	private lexIdentifier(): Token<SyntaxKind.IdentifierToken | Keyword> {
+	private lexIdentifier(): Token<SyntaxKind.IdentifierToken | KeywordTokenKind> {
 		while (!this.readEOF && CharCode.isAlphaNumeric(this.charCode())) {
 			this.next();
 		} 
 		const textEnd = this.cursor - 1;
 		const value = this.text.slice(this.textStart, textEnd);
 		
-		const end = this.getSourcePosition(-1);
-		return {
-			kind: ReservedKeywords.get(value) ?? SyntaxKind.IdentifierToken,
-			value,
-			start: this.start,
-			end
-		};
+		return this.tokenWithValue(ReservedKeywords.get(value) ?? SyntaxKind.IdentifierToken, value, this.getSourcePosition(-1));
 	}
 
 	public findTokenAtPosition(offset: number): { token: Token<SyntaxKind> | null, index: number, lexer: Lexer } {

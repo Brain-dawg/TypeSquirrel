@@ -106,8 +106,8 @@ const documentSettings = new Map<string, Thenable<Settings>>();
 let globalSettings: Settings = defaultSettings;
 
 interface DocumentInfo {
-	globalLexer: Lexer,
-	// parser: Parser
+	lexer: Lexer,
+	parser: Parser
 }
 
 export const documentInfo = new Map<string, DocumentInfo>();
@@ -179,7 +179,7 @@ connection.onRequest('getToken', (params: { uri: string, offset: number }): Toke
 		return null;
 	}
 
-	return info.globalLexer.findTokenAtPosition(params.offset).token;
+	return info.lexer.findTokenAtPosition(params.offset).token;
 }); 
 
 function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagnostic[]) {
@@ -241,12 +241,12 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	
 	const lexer = new Lexer(document.getText());
 	
-	// const parser = new Parser(lexer);
-	// parser.parse();
+	const parser = new Parser(lexer);
+	const sourceFile = parser.parseSourceFile();
 
 	documentInfo.set(document.uri, {
-		globalLexer: lexer,
-		// parser
+		lexer,
+		parser
 	});
 
 	if (!settings.enableDiagnostics) {
@@ -258,8 +258,7 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	const diagnostics: Diagnostic[] = [];
 	processLexer(document, lexer, diagnostics);
 
-	/*
-	for (const error of parser.getErrors()) {
+	for (const error of parser.getDiagnostics()) {
 		diagnostics.push({
 			range: {
 				// Conversion from 0 based offset
@@ -270,7 +269,7 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 			severity: error.severity,
 			source: "tf2-vscript-support"
 		});
-	}*/
+	}
 
 	return diagnostics;
 }
