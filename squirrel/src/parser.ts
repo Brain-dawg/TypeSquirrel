@@ -168,7 +168,7 @@ export class Parser {
 			}
 		}
 
-		return this.parseAssignmentExpressionOrHigher();
+		return this.parseExpression();
 	}
 
 	private parseInitialiser(assignment: SyntaxKind.ColonToken | SyntaxKind.EqualsToken): Expression {
@@ -177,7 +177,7 @@ export class Parser {
 			this.parseOptional(assignment === SyntaxKind.EqualsToken ? SyntaxKind.ColonToken : SyntaxKind.EqualsToken);
 		}
 
-		return this.parseAssignmentExpressionOrHigher();
+		return this.parseExpression();
 	}
 
 	private scalarLiteralErrors(expression: Expression) {
@@ -282,7 +282,7 @@ export class Parser {
 		if (this.token.kind === SyntaxKind.OpenBracketToken) {
 			const start = this.token.start;
 			this.parseExpected(SyntaxKind.OpenBracketToken);
-			const name = this.parseExpression();
+			const name = this.parseCommaExpression();
 			this.parseExpected(SyntaxKind.CloseBracketToken);
 			const end = this.lexer.lastToken.end;
 			const initialiser = optionalInitialisation ?
@@ -403,7 +403,6 @@ export class Parser {
 			// Being at the end of the file ends all lists.
 			return true;
 		}
-
 		switch (parsingContext) {
 		case ParsingContext.SourceElements:
 		case ParsingContext.BlockStatements:
@@ -630,16 +629,16 @@ export class Parser {
 		return node;
 	}
 
-	private parseExpression(message?: string): Expression {
+	private parseCommaExpression(message?: string): Expression {
 		const start = this.token.start;
-		let expr = this.parseAssignmentExpressionOrHigher(message);
+		let expr = this.parseExpression(message);
 		while (this.parseOptional(SyntaxKind.CommaToken)) {
-			expr = this.createBinaryExpression(start, expr, SyntaxKind.CommaToken, this.parseAssignmentExpressionOrHigher());
+			expr = this.createBinaryExpression(start, expr, SyntaxKind.CommaToken, this.parseExpression());
 		}
 		return expr;
 	}
 
-	private parseAssignmentExpressionOrHigher(message?: string): Expression {
+	private parseExpression(message?: string): Expression {
 		const start = this.token.start;
 		let expr = this.parseBinaryExpressionOrHigher(OperatorPrecedence.Lowest, message);
 		if (isAssignmentOperator(this.token)) {
@@ -649,7 +648,7 @@ export class Parser {
 
 			const operator = this.token.kind;
 			this.next();
-			return this.createBinaryExpression(start, expr, operator, this.parseAssignmentExpressionOrHigher());
+			return this.createBinaryExpression(start, expr, operator, this.parseExpression());
 		}
 
 		if (this.token.kind === SyntaxKind.QuestionToken) {
@@ -763,9 +762,9 @@ export class Parser {
 
 	private parseConditionalExpression(start: number, condition: Expression): ConditionalExpression {
 		this.parseExpected(SyntaxKind.QuestionToken);
-		const whenTrue = this.parseExpression();
+		const whenTrue = this.parseCommaExpression();
 		const whenFalse = this.parseExpected(SyntaxKind.ColonToken) ?
-			this.parseExpression() :
+			this.parseCommaExpression() :
 			this.createMissingIdentifier();
 
 		const end = this.lexer.lastToken.end;
@@ -872,7 +871,7 @@ export class Parser {
 		const rawcallKeywordEnd = this.lexer.lastToken.end;
 		let argumentExpressions: NodeArray<Expression>;
 		if (this.parseExpected(SyntaxKind.OpenParenthesisToken)) {
-			argumentExpressions = this.parseDelimitedList(ParsingContext.ArgumentExpressions, this.parseAssignmentExpressionOrHigher, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
+			argumentExpressions = this.parseDelimitedList(ParsingContext.ArgumentExpressions, this.parseExpression, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
 			this.parseExpected(SyntaxKind.CloseParenthesisToken);
 			if (argumentExpressions.elements.length < 2) {
 				this.diagnostic("'rawcall' requires at least 2 parameters (callee and this).", start, rawcallKeywordEnd);
@@ -927,7 +926,7 @@ export class Parser {
 		const start = this.token.start;
 
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
-		const expression = this.parseExpression();
+		const expression = this.parseCommaExpression();
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 
 		const end = this.lexer.lastToken.end;
@@ -941,7 +940,7 @@ export class Parser {
 		const start = this.token.start;
 		
 		this.parseExpected(SyntaxKind.OpenBracketToken);
-		const elements = this.parseDelimitedList(ParsingContext.ArrayLiteralMembers, this.parseAssignmentExpressionOrHigher, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
+		const elements = this.parseDelimitedList(ParsingContext.ArrayLiteralMembers, this.parseExpression, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
 		this.parseExpected(SyntaxKind.CloseBracketToken);
 		
 		const end = this.lexer.lastToken.end;
@@ -1020,7 +1019,7 @@ export class Parser {
 		
 		this.parseExpected(SyntaxKind.AtToken);
 		const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
-		const expression = this.parseAssignmentExpressionOrHigher();
+		const expression = this.parseExpression();
 
 		const end = this.lexer.lastToken.end;
 		const node: LambdaExpression = { kind: SyntaxKind.LambdaExpression, start, end, environment, parameters, expression };
@@ -1080,7 +1079,7 @@ export class Parser {
 		}
 
 		this.parseExpected(SyntaxKind.OpenBracketToken);
-		const argumentExpression = this.parseAssignmentExpressionOrHigher();
+		const argumentExpression = this.parseExpression();
 		this.parseExpected(SyntaxKind.CloseBracketToken);
 
 		const end = this.lexer.lastToken.end;
@@ -1094,7 +1093,7 @@ export class Parser {
 		const start = expression.start;
 		
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
-		const argumentExpressions = this.parseDelimitedList(ParsingContext.ArgumentExpressions, this.parseAssignmentExpressionOrHigher, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
+		const argumentExpressions = this.parseDelimitedList(ParsingContext.ArgumentExpressions, this.parseExpression, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		
 		const end = this.lexer.lastToken.end;
@@ -1187,7 +1186,7 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.IfKeyword);
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
-		const expression = this.parseExpression();
+		const expression = this.parseCommaExpression();
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		// The only place where you need to use parseStatementWithEnd. Why? Because it's a squirrel lang.
 		const thenStatement = this.parseStatementWithEnd();
@@ -1205,7 +1204,7 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.WhileKeyword);
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
-		const expression = this.parseExpression();
+		const expression = this.parseCommaExpression();
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		const statement = this.parseStatement();
 
@@ -1223,7 +1222,7 @@ export class Parser {
 		const statement = this.parseStatement();
 		this.parseExpected(SyntaxKind.WhileKeyword);
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
-		const expression = this.parseExpression();
+		const expression = this.parseCommaExpression();
 
 		const end = this.lexer.lastToken.end;
 		const node: DoStatement = { kind: SyntaxKind.DoStatement, start, end, statement, expression };
@@ -1242,13 +1241,13 @@ export class Parser {
 		if (this.token.kind === SyntaxKind.LocalKeyword) {
 			initialiser = this.parseLocalStatement();
 		} else if (this.token.kind !== SyntaxKind.SemicolonToken) {
-			initialiser = this.parseExpression("Expression or ';' expected.");
+			initialiser = this.parseCommaExpression("Expression or ';' expected.");
 		}
 
 		this.parseExpected(SyntaxKind.SemicolonToken);
-		const condition = this.token.kind !== SyntaxKind.SemicolonToken ? this.parseExpression("Expression or ';' expected.") : undefined;
+		const condition = this.token.kind !== SyntaxKind.SemicolonToken ? this.parseCommaExpression("Expression or ';' expected.") : undefined;
 		this.parseExpected(SyntaxKind.SemicolonToken);
-		const incrementor = this.token.kind !== SyntaxKind.CloseParenthesisToken ? this.parseExpression("Expression or ')' expected.") : undefined;
+		const incrementor = this.token.kind !== SyntaxKind.CloseParenthesisToken ? this.parseCommaExpression("Expression or ')' expected.") : undefined;
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		const statement = this.parseStatement();
 
@@ -1410,7 +1409,7 @@ export class Parser {
 		const start = this.token.start;
 
 		this.parseExpected(SyntaxKind.ReturnKeyword);
-		const expression = this.canParseEndOfStatement() ? undefined : this.parseExpression();
+		const expression = this.canParseEndOfStatement() ? undefined : this.parseCommaExpression();
 
 		const end = this.lexer.lastToken.end;
 		const node: ReturnStatement = { kind: SyntaxKind.ReturnStatement, start, end, expression };
@@ -1423,7 +1422,7 @@ export class Parser {
 		const start = this.token.start;
 
 		this.parseExpected(SyntaxKind.YieldKeyword);
-		const expression = this.canParseEndOfStatement() ? undefined : this.parseExpression();
+		const expression = this.canParseEndOfStatement() ? undefined : this.parseCommaExpression();
 
 		const end = this.lexer.lastToken.end;
 		const node: YieldStatement = { kind: SyntaxKind.YieldStatement, start, end, expression };
@@ -1617,7 +1616,7 @@ export class Parser {
 		const start = this.token.start;
 
 		this.parseExpected(SyntaxKind.ThrowKeyword);
-		const expression = this.parseExpression();
+		const expression = this.parseCommaExpression();
 
 		const end = this.lexer.lastToken.end;
 		const node: ThrowStatement = { kind: SyntaxKind.ThrowStatement, start, end, expression };
@@ -1629,7 +1628,7 @@ export class Parser {
 	private parseExpressionStatement(): ExpressionStatement {
 		const start = this.token.start;
 
-		const expression = this.parseExpression("Statement expected.");
+		const expression = this.parseCommaExpression("Statement expected.");
 
 		const end = this.lexer.lastToken.end;
 		const node: ExpressionStatement = { kind: SyntaxKind.ExpressionStatement, start, end, expression };
