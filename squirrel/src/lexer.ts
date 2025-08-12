@@ -30,10 +30,10 @@ export class Lexer {
 	private textStart: number;
 
 	private token?: Token<SyntaxKind>;
-	private lastEnd: number;
+	private previousToken?: Token<SyntaxKind>;
 
 	private doc: Token<SyntaxKind.DocComment> | undefined;
-	private hasPrecedingLineBreak: boolean;
+	private precedingLineBreak: boolean;
 
 	private readonly tokens: Token<SyntaxKind>[];
 
@@ -219,11 +219,9 @@ export class Lexer {
 		this.start = 0;
 		this.textStart = 0;
 
-		this.lastEnd = 0;
-
 		this.tokens = [];
 
-		this.hasPrecedingLineBreak = false;
+		this.precedingLineBreak = false;
 
 		this.sourcePositions = sourcePositions ?? Array.from({ length: text.length + 1 }, (_, i) => i);
 
@@ -254,8 +252,12 @@ export class Lexer {
 		}
 	}
 
-	public get lastTokenEnd(): number {
-		return this.lastEnd;
+	public get lastToken(): Token<SyntaxKind> {
+		return this.previousToken || {kind: SyntaxKind.Invalid, start: 0, end: 0} as Token<SyntaxKind.Invalid>;
+	}
+
+	public get hasPrecedingLineBreak(): boolean {
+		return this.precedingLineBreak;
 	}
 
 	private getSourcePosition(offset: number = 0): number {
@@ -301,8 +303,7 @@ export class Lexer {
 		return {
 			kind,
 			start: this.start,
-			end,
-			hasPrecedingLineBreak: false
+			end
 		} as Token<T>;
 	}
 
@@ -313,8 +314,7 @@ export class Lexer {
 			kind,
 			start: this.start,
 			end,
-			value: this.text.slice(this.textStart, textEnd),
-			hasPrecedingLineBreak: false
+			value: this.text.slice(this.textStart, textEnd)
 		} as Token<T>;
 	}
 
@@ -326,22 +326,17 @@ export class Lexer {
 			start: this.start,
 			end,
 			value,
-			hasPrecedingLineBreak: false,
 			sourcePositions
 		} as T extends StringTokenKind ? StringToken<T> : Token<T>;
 	}
 
 	private finishToken<T extends SyntaxKind>(token: Token<T>): Token<T> {
-		this.lastEnd = this.token ? this.token.end : 0;
+		this.previousToken = this.token;
 
 		this.tokens.push(token);
 		if (this.doc) {
 			token.doc = this.doc;
 			this.doc = undefined;
-		}
-		if (this.hasPrecedingLineBreak) {
-			token.hasPrecedingLineBreak = true;
-			this.hasPrecedingLineBreak = false;
 		}
 		
 		return this.token = token;
@@ -361,6 +356,8 @@ export class Lexer {
 			}
 			return this.finishToken(this.lexEndOfFileToken());
 		}
+
+		this.precedingLineBreak = false;
 
 		let previousEntry: TokenMap | undefined;
 
@@ -415,7 +412,7 @@ export class Lexer {
 	private lexLineFeed(): null {
 		const token = this.simpleToken(SyntaxKind.LineFeedToken);
 		this.tokens.push(token);
-		this.hasPrecedingLineBreak = true;
+		this.precedingLineBreak = true;
 		return null;
 	}
 
@@ -495,7 +492,7 @@ export class Lexer {
 			if (charCode === opening) {
 				this.next();
 				if (this.charCode() !== opening) {
-					return this.tokenWithValue(kind, value, this.getSourcePosition(), sourcePositions);
+					return this.tokenWithValue(kind, value, this.getSourcePosition(-1), sourcePositions);
 				}
 			}
 
@@ -524,13 +521,13 @@ export class Lexer {
 				const end = this.getSourcePosition();
 				if (kind === SyntaxKind.StringToken) {
 					this.next();
-					return this.tokenWithValue(kind, value, this.getSourcePosition(), sourcePositions);
+					return this.tokenWithValue(kind, value, this.getSourcePosition(-1), sourcePositions);
 				}
 
 				if (value.length === 0) {
 					this.diagnostic("Hexadecimal number expected.", this.start);
 					this.next();
-					return this.tokenWithValue(kind, '0', this.getSourcePosition());
+					return this.tokenWithValue(kind, '0', this.getSourcePosition(-1));
 				}
 
 				if (value.length > 1) {
@@ -538,7 +535,7 @@ export class Lexer {
 				}
 
 				this.next();
-				return this.tokenWithValue(kind, value.charCodeAt(0).toString(), this.getSourcePosition());
+				return this.tokenWithValue(kind, value.charCodeAt(0).toString(), this.getSourcePosition(-1));
 			case CharCode.LINE_FEED:
 				if (kind === SyntaxKind.StringToken) {
 					this.diagnostic("Unterminated string literal.");

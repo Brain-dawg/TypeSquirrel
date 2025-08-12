@@ -1,5 +1,5 @@
 import { Lexer } from "./lexer";
-import { Node, SyntaxKind, NodeArray, forEachChild, Token, VScriptDiagnostic, DiagnosticSeverity, Identifier, TokenToString, isTokenAValidIdentifier, isTokenAKeyword, Expression, PrefixUnaryExpression, VariableDeclaration, Parameter, VariedArgs, PropertyName, isTokenAString, Statement, BinaryOperator, BinaryExpression, OperatorPrecedence, isLeftHandSideExpression, isAssignmentOperator, getBinaryOperatorPrecedence, LeftHandSideExpression, PrimaryExpression, ConditionalExpression, PrefixUnaryOperator, DeleteExpression, TypeOfExpression, ResumeExpression, CloneExpression, RawCallExpression, RootAccessExpression, LiteralExpression, TokenToExpression, ParenthesisedExpression, ArrayLiteralExpression, TableLiteralExpression, TableLiteralMember, TableMethod, TableConstructor, TableProperty, FunctionExpression, LambdaExpression, ClassExpression, PostfixUnaryExpression, PostfixUnaryOperator, PropertyAccessExpression, ElementAccessExpression, CallExpression, EmptyStatement, BlockStatement, IfStatement, WhileStatement, DoStatement, ForStatement, LocalStatement, ForEachStatement, SwitchStatement, CaseBlock, CaseClause, DefaultClause, LocalFunctionDeclaration, ConstStatement, ReturnStatement, YieldStatement, ContinueStatement, BreakStatement, FunctionDeclaration, ClassDeclaration, ClassMember, ClassMethod, ClassConstructor, ClassProperty, EnumDeclaration, EnumMember, TryStatement, CatchClause, ThrowStatement, ExpressionStatement, SourceFile, isValidSlotExpression } from "./types";
+import { Node, SyntaxKind, NodeArray, forEachChild, Token, VScriptDiagnostic, DiagnosticSeverity, Identifier, TokenToString, isTokenAValidIdentifier, isTokenAKeyword, Expression, PrefixUnaryExpression, VariableDeclaration, Parameter, VariedArgs, PropertyName, isTokenAString, Statement, BinaryOperator, BinaryExpression, OperatorPrecedence, isAssignmentOperator, getBinaryOperatorPrecedence, PrimaryExpression, ConditionalExpression, PrefixUnaryOperator, DeleteExpression, TypeOfExpression, ResumeExpression, CloneExpression, RawCallExpression, RootAccessExpression, LiteralExpression, TokenToExpression, ParenthesisedExpression, ArrayLiteralExpression, TableLiteralExpression, TableLiteralMember, TableMethod, TableConstructor, TableProperty, FunctionExpression, LambdaExpression, ClassExpression, PostfixUnaryExpression, PostfixUnaryOperator, PropertyAccessExpression, ElementAccessExpression, CallExpression, EmptyStatement, BlockStatement, IfStatement, WhileStatement, DoStatement, ForStatement, LocalStatement, ForEachStatement, SwitchStatement, CaseBlock, CaseClause, DefaultClause, LocalFunctionDeclaration, ConstStatement, ReturnStatement, YieldStatement, ContinueStatement, BreakStatement, FunctionDeclaration, ClassDeclaration, ClassMember, ClassMethod, ClassConstructor, ClassProperty, EnumDeclaration, EnumMember, TryStatement, CatchClause, ThrowStatement, ExpressionStatement, SourceFile, isValidSlotExpression, ForInitialiser } from "./types";
 
 
 const enum ParsingContext {
@@ -97,6 +97,7 @@ export class Parser {
 		return list;
 	}
 
+	// This one works as missing expression (inherently a statement) too
 	private createMissingIdentifier(): Identifier {
 		const pos = this.token.start;
 		return { kind: SyntaxKind.Identifier, start: pos, end: pos, value: "" };
@@ -124,12 +125,13 @@ export class Parser {
 		return this.token.kind === SyntaxKind.SemicolonToken ||
 			this.token.kind === SyntaxKind.CloseBraceToken ||
 			this.token.kind === SyntaxKind.EndOfFileToken ||
-			this.token.hasPrecedingLineBreak;
+			this.lexer.hasPrecedingLineBreak;
 	}
 
-	private parseEndOfStatement() {
+	private parseEndOfStatement(): void {
 		if (!this.canParseEndOfStatement()) {
 			this.diagnosticAtCurrentToken("End of statement expected.");
+			return;
 		}
 
 		if (this.token.kind === SyntaxKind.SemicolonToken) {
@@ -151,7 +153,7 @@ export class Parser {
 
 		if (!message) {
 			message = "Identifier expected." + (isTokenAKeyword(token) ?
-				`'${TokenToString.get(token.kind)}' is a reserved word that cannot be used here.` : "");
+				` '${TokenToString.get(token.kind)}' is a reserved word that cannot be used here.` : "");
 		}
 
 		this.diagnosticAtCurrentToken(message);
@@ -203,7 +205,7 @@ export class Parser {
 
 		const name = this.parseIdentifierWithDiagnostic();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: VariableDeclaration = { kind: SyntaxKind.VariableDeclaration, start, end, name };
 		overrideParentInImmediateChildren(node);
 
@@ -213,10 +215,10 @@ export class Parser {
 	private parseVariableDeclaration(message?: string): VariableDeclaration {
 		const start = this.token.start;
 
-		const name = this.parseIdentifierWithDiagnostic();
+		const name = this.parseIdentifierWithDiagnostic(message);
 		const initialiser = this.parseOptionalInitialiser(SyntaxKind.EqualsToken);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: VariableDeclaration = { kind: SyntaxKind.VariableDeclaration, start, end, name, initialiser };
 		overrideParentInImmediateChildren(node);
 
@@ -246,7 +248,7 @@ export class Parser {
 				this.diagnosticAtCurrentToken("Expected ')', varied argument token must be the last parameter.");
 			}
 
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const node: VariedArgs = { kind: SyntaxKind.VariedArgs, start, end };
 
 			return node;
@@ -282,7 +284,7 @@ export class Parser {
 			this.parseExpected(SyntaxKind.OpenBracketToken);
 			const name = this.parseExpression();
 			this.parseExpected(SyntaxKind.CloseBracketToken);
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const initialiser = optionalInitialisation ?
 				this.parseOptionalInitialiser(SyntaxKind.EqualsToken) :
 				this.parseInitialiser(SyntaxKind.EqualsToken);
@@ -335,7 +337,7 @@ export class Parser {
 
 		this.parsingContext = saveParsingContext;
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: NodeArray<T> = { kind: SyntaxKind.NodeArray, start, end, elements };
 		overrideParentInImmediateChildren(node);
 
@@ -388,7 +390,7 @@ export class Parser {
 
 		this.parsingContext = saveParsingContext;
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: NodeArray<T> = { kind: SyntaxKind.NodeArray, start, end, elements };
 		overrideParentInImmediateChildren(node);
 
@@ -508,6 +510,7 @@ export class Parser {
 		case SyntaxKind.VerbatimStringToken:
 
 		case SyntaxKind.OpenBraceToken:
+		case SyntaxKind.OpenParenthesisToken:
 		case SyntaxKind.OpenBracketToken:
 
 		case SyntaxKind.FunctionKeyword:
@@ -602,7 +605,7 @@ export class Parser {
 	public parseSourceFile(): SourceFile {
 		const start = 0;
 
-		const statements = this.parseList(ParsingContext.SourceElements, this.parseStatement);
+		const statements = this.parseList(ParsingContext.SourceElements, this.parseStatementWithEnd);
 		const eof = this.lexer.lex();
 		if (eof.kind !== SyntaxKind.EndOfFileToken) {
 			this.diagnosticAtCurrentToken("End of file expected");
@@ -616,7 +619,7 @@ export class Parser {
 	} 
 
 	private createBinaryExpression(start: number, left: Expression, operator: BinaryOperator, right: Expression): BinaryExpression {
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: BinaryExpression = { kind: SyntaxKind.BinaryExpression, start, end, left, operator, right };
 		overrideParentInImmediateChildren(node);
 
@@ -694,14 +697,9 @@ export class Parser {
 		case SyntaxKind.RawCallKeyword:
 			return this.parseRawCallExpression();
 		default:
-			return this.parseLeftHandSideExpression(message);
+			const primary: PrimaryExpression = this.parsePrimaryExpression(message);
+			return this.parsePostfixExpression(primary);
 		}
-	}
-
-	private parseLeftHandSideExpression(message?: string): LeftHandSideExpression {
-		const primary: PrimaryExpression = this.parsePrimaryExpression(message);
-
-		return this.parsePostfixExpression(primary);
 	}
 
 	private parsePrimaryExpression(message?: string): PrimaryExpression {
@@ -766,7 +764,7 @@ export class Parser {
 			this.parseExpression() :
 			this.createMissingIdentifier();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ConditionalExpression = { kind: SyntaxKind.ConditionalExpression, start, end, condition, whenTrue, whenFalse };
 		overrideParentInImmediateChildren(node);
 
@@ -781,7 +779,7 @@ export class Parser {
 		this.next();
 		const operand = this.parseUnaryExpressionOrHigher();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: PrefixUnaryExpression = { kind: SyntaxKind.PrefixUnaryExpression, start, end, operator, operand };
 		overrideParentInImmediateChildren(node);
 
@@ -794,9 +792,13 @@ export class Parser {
 
 		const operator = this.token.kind as PrefixUnaryOperator;
 		this.next();
-		const operand = this.parseLeftHandSideExpression();
 
-		const end = this.lexer.lastTokenEnd;
+		const operand = this.parseUnaryExpressionOrHigher();
+		if (!isValidSlotExpression(operand.kind)) {
+			this.diagnostic("Can't update expression.", operand.start, operand.end);
+		}
+
+		const end = this.lexer.lastToken.end;
 		const node: PrefixUnaryExpression = { kind: SyntaxKind.PrefixUnaryExpression, start, end, operator, operand };
 		overrideParentInImmediateChildren(node);
 
@@ -808,8 +810,11 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.DeleteKeyword);
 		const expression = this.parseUnaryExpressionOrHigher();
+		if (!isValidSlotExpression(expression.kind)) {
+			this.diagnostic("Can't delete expression.", expression.start, expression.end);
+		}
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: DeleteExpression = { kind: SyntaxKind.DeleteExpression, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -822,7 +827,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.TypeOfKeyword);
 		const expression = this.parseUnaryExpressionOrHigher();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: TypeOfExpression = { kind: SyntaxKind.TypeOfExpression, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -835,7 +840,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.ResumeKeyword);
 		const expression = this.parseUnaryExpressionOrHigher();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ResumeExpression = { kind: SyntaxKind.ResumeExpression, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -848,7 +853,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.CloneKeyword);
 		const expression = this.parseUnaryExpressionOrHigher();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: CloneExpression = { kind: SyntaxKind.CloneExpression, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -858,17 +863,21 @@ export class Parser {
 	private parseRawCallExpression(): RawCallExpression {
 		const start = this.token.start;
 
-		this.parseExpected(SyntaxKind.RawCallExpression);
+		this.parseExpected(SyntaxKind.RawCallKeyword);
 
+		const rawcallKeywordEnd = this.lexer.lastToken.end;
 		let argumentExpressions: NodeArray<Expression>;
 		if (this.parseExpected(SyntaxKind.OpenParenthesisToken)) {
 			argumentExpressions = this.parseDelimitedList(ParsingContext.ArgumentExpressions, this.parseAssignmentExpressionOrHigher, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
 			this.parseExpected(SyntaxKind.CloseParenthesisToken);
+			if (argumentExpressions.elements.length < 2) {
+				this.diagnostic("'rawcall' requires at least 2 parameters (callee and this).", start, rawcallKeywordEnd);
+			}
 		} else {
 			argumentExpressions = this.createMissingList<Expression>();
 		}
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: RawCallExpression = { kind: SyntaxKind.RawCallExpression, start, end, argumentExpressions };
 		overrideParentInImmediateChildren(node);
 
@@ -881,7 +890,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.ColonColonToken);
 		const name = this.parseIdentifierWithDiagnostic();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: RootAccessExpression = { kind: SyntaxKind.RootAccessExpression, start, end, name };
 		overrideParentInImmediateChildren(node);
 
@@ -917,7 +926,7 @@ export class Parser {
 		const expression = this.parseExpression();
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ParenthesisedExpression = { kind: SyntaxKind.ParenthesisedExpression, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -931,7 +940,7 @@ export class Parser {
 		const elements = this.parseDelimitedList(ParsingContext.ArrayLiteralMembers, this.parseAssignmentExpressionOrHigher, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
 		this.parseExpected(SyntaxKind.CloseBracketToken);
 		
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ArrayLiteralExpression = { kind: SyntaxKind.ArrayLiteralExpression, start, end, elements };
 		overrideParentInImmediateChildren(node);
 
@@ -945,7 +954,7 @@ export class Parser {
 		const members = this.parseDelimitedList(ParsingContext.TableLiteralMembers, this.parseTableMember, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
 		this.parseExpected(SyntaxKind.CloseBraceToken);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: TableLiteralExpression = { kind: SyntaxKind.TableLiteralExpression, start, end, members };
 		overrideParentInImmediateChildren(node);
 
@@ -959,7 +968,7 @@ export class Parser {
 		case SyntaxKind.FunctionKeyword: {
 			const { name, environment, parameters, statement } = this.parseMethod();
 
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const node: TableMethod | TableConstructor = name.value === "constructor" ?
 				{ kind: SyntaxKind.TableConstructor, start, end, environment, parameters, statement, hasPrecedingFunction: true } :
 				{ kind: SyntaxKind.TableMethod, start, end, name, environment, parameters, statement };
@@ -970,7 +979,7 @@ export class Parser {
 		case SyntaxKind.ConstructorKeyword: {
 			const { environment, parameters, statement } = this.parseConstructor();
 
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const node: TableConstructor = { kind: SyntaxKind.TableConstructor, start, end, environment, parameters, statement, hasPrecedingFunction: false };
 			overrideParentInImmediateChildren(node);
 
@@ -979,7 +988,7 @@ export class Parser {
 		default: {
 			const { name, initialiser } = this.parseProperty(AllowedPropertyName.Identifier | AllowedPropertyName.Computed | AllowedPropertyName.String, /*optionalInitialisation*/ false);
 
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const node: TableProperty = { kind: SyntaxKind.TableProperty, start, end, name, initialiser };
 			overrideParentInImmediateChildren(node);
 
@@ -995,7 +1004,7 @@ export class Parser {
 		const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
 		const statement = this.parseStatement();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: FunctionExpression = { kind: SyntaxKind.FunctionExpression, start, end, environment, parameters, statement };
 		overrideParentInImmediateChildren(node);
 
@@ -1009,7 +1018,7 @@ export class Parser {
 		const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
 		const expression = this.parseAssignmentExpressionOrHigher();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: LambdaExpression = { kind: SyntaxKind.LambdaExpression, start, end, environment, parameters, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -1023,7 +1032,7 @@ export class Parser {
 		const inherits = this.parseOptional(SyntaxKind.ExtendsKeyword) ? this.parseUnaryExpressionOrHigher() : undefined;
 		const members = this.parseClassMembers();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ClassExpression = { kind: SyntaxKind.ClassExpression, start, end, inherits, members };
 		overrideParentInImmediateChildren(node);
 
@@ -1035,8 +1044,11 @@ export class Parser {
 
 		const operator = this.token.kind as PostfixUnaryOperator;
 		this.next();
+		if (!isValidSlotExpression(operand.kind)) {
+			this.diagnostic("Can't update expression.", operand.start, operand.end);
+		}
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: PostfixUnaryExpression = { kind: SyntaxKind.PostfixUnaryExpression, start, end, operand, operator };
 		overrideParentInImmediateChildren(node);
 
@@ -1049,7 +1061,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.DotToken);
 		const property = this.parseIdentifierWithDiagnostic();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: PropertyAccessExpression = { kind: SyntaxKind.PropertyAccessExpression, start, end, expression, property };
 		overrideParentInImmediateChildren(node);
 
@@ -1059,11 +1071,15 @@ export class Parser {
 	private parseElementAccessExpression(expression: Expression): ElementAccessExpression {
 		const start = expression.start;
 
+		if (this.lexer.hasPrecedingLineBreak) {
+			this.diagnosticAtCurrentToken("Cannot use new line before element access expression.");
+		}
+
 		this.parseExpected(SyntaxKind.OpenBracketToken);
 		const argumentExpression = this.parseAssignmentExpressionOrHigher();
 		this.parseExpected(SyntaxKind.CloseBracketToken);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ElementAccessExpression = { kind: SyntaxKind.ElementAccessExpression, start, end, expression, argumentExpression};
 		overrideParentInImmediateChildren(node);
 
@@ -1077,7 +1093,7 @@ export class Parser {
 		const argumentExpressions = this.parseDelimitedList(ParsingContext.ArgumentExpressions, this.parseAssignmentExpressionOrHigher, SyntaxKind.CommaToken, /*isDelimiterOptional*/ true);
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: CallExpression = { kind: SyntaxKind.CallExpression, start, end, expression, argumentExpressions };
 		overrideParentInImmediateChildren(node);
 
@@ -1129,12 +1145,21 @@ export class Parser {
 		}
 	}
 
+	private parseStatementWithEnd(): Statement {
+		const statement = this.parseStatement();
+		const kind = this.lexer.lastToken.kind;
+		if (kind !== SyntaxKind.CloseBraceToken && kind !== SyntaxKind.SemicolonToken) {
+			this.parseEndOfStatement();
+		}
+		return statement;
+	}
+
 	private parseEmptyStatement(): EmptyStatement {
 		const start = this.token.start;
 
 		this.parseExpected(SyntaxKind.SemicolonToken);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: EmptyStatement = { kind: SyntaxKind.EmptyStatement, start, end };
 
 		return node;
@@ -1144,10 +1169,10 @@ export class Parser {
 		const start = this.token.start;
 
 		this.parseExpected(SyntaxKind.OpenBraceToken);
-		const statements = this.parseList(ParsingContext.BlockStatements, this.parseStatement);
+		const statements = this.parseList(ParsingContext.BlockStatements, this.parseStatementWithEnd);
 		this.parseExpected(SyntaxKind.CloseBraceToken);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: BlockStatement = { kind: SyntaxKind.BlockStatement, start, end, statements };
 
 		return node;
@@ -1160,10 +1185,11 @@ export class Parser {
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
 		const expression = this.parseExpression();
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
-		const thenStatement = this.parseStatement();
-		const elseStatement = this.parseOptional(SyntaxKind.ElseKeyword) ? this.parseStatement() : undefined;
+		// The only place where you need to use parseStatementWithEnd. Why? Because it's a squirrel lang.
+		const thenStatement = this.parseStatementWithEnd();
+		const elseStatement = this.parseOptional(SyntaxKind.ElseKeyword) ? this.parseStatementWithEnd() : undefined;
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: IfStatement = { kind: SyntaxKind.IfStatement, start, end, expression, thenStatement, elseStatement };
 		overrideParentInImmediateChildren(node);
 
@@ -1179,7 +1205,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		const statement = this.parseStatement();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: WhileStatement = { kind: SyntaxKind.WhileStatement, start, end, expression, statement };
 		overrideParentInImmediateChildren(node);
 
@@ -1195,7 +1221,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
 		const expression = this.parseExpression();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: DoStatement = { kind: SyntaxKind.DoStatement, start, end, statement, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -1208,7 +1234,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.ForKeyword);
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
 
-		let initialiser: LocalStatement | Expression | undefined;
+		let initialiser: ForInitialiser | undefined;
 		if (this.token.kind === SyntaxKind.LocalKeyword) {
 			initialiser = this.parseLocalStatement();
 		} else if (this.token.kind !== SyntaxKind.SemicolonToken) {
@@ -1222,7 +1248,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		const statement = this.parseStatement();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ForStatement = { kind: SyntaxKind.ForStatement, start, end, initialiser, condition, incrementor, statement };
 		overrideParentInImmediateChildren(node);
 
@@ -1231,7 +1257,6 @@ export class Parser {
 
 	private parseForEachStatement(): ForEachStatement {
 		const start = this.token.start;
-
 		this.parseExpected(SyntaxKind.ForEachKeyword);
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
 		let index: VariableDeclaration | undefined;
@@ -1245,7 +1270,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		const statement = this.parseStatement();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ForEachStatement = { kind: SyntaxKind.ForEachStatement, start, end, index, value, iterable, statement };
 		overrideParentInImmediateChildren(node);
 
@@ -1261,7 +1286,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		const caseBlock = this.parseCaseBlock();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: SwitchStatement = { kind: SyntaxKind.SwitchStatement, start, end, expression, caseBlock };
 		overrideParentInImmediateChildren(node);
 
@@ -1275,7 +1300,7 @@ export class Parser {
 		const clauses = this.parseList(ParsingContext.SwitchClauses, this.parseCaseOrDefaultClause);
 		this.parseExpected(SyntaxKind.CloseBraceToken);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: CaseBlock = { kind: SyntaxKind.CaseBlock, start, end, clauses };
 		overrideParentInImmediateChildren(node);
 
@@ -1296,9 +1321,9 @@ export class Parser {
 		this.parseExpected(SyntaxKind.CaseKeyword);
 		const expression = this.parseExpression();
 		this.parseExpected(SyntaxKind.ColonToken);
-		const statements = this.parseList(ParsingContext.SwitchClauseStatements, this.parseStatement);
+		const statements = this.parseList(ParsingContext.SwitchClauseStatements, this.parseStatementWithEnd);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: CaseClause = { kind: SyntaxKind.CaseClause, start, end, expression, statements };
 		overrideParentInImmediateChildren(node);
 
@@ -1310,9 +1335,9 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.DefaultKeyword);
 		this.parseExpected(SyntaxKind.ColonToken);
-		const statements = this.parseList(ParsingContext.SwitchClauseStatements, this.parseStatement);
+		const statements = this.parseList(ParsingContext.SwitchClauseStatements, this.parseStatementWithEnd);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: DefaultClause = { kind: SyntaxKind.DefaultClause, start, end, statements };
 		overrideParentInImmediateChildren(node);
 
@@ -1329,7 +1354,7 @@ export class Parser {
 			const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
 			const statement = this.parseStatement();
 
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const node: LocalFunctionDeclaration = { kind: SyntaxKind.LocalFunctionDeclaration, start, end, name, environment, parameters, statement };
 			overrideParentInImmediateChildren(node);
 
@@ -1338,8 +1363,7 @@ export class Parser {
 		// Shouldn't be parsed with parseDelimitedList since it must contain at least 1 element and trailing commas are not allowed.
 		const declarations = this.parseVariableDeclarations();
 		
-		const end = this.lexer.lastTokenEnd;
-		// this.parseEndOfStatement();
+		const end = this.lexer.lastToken.end;
 		const node: LocalStatement = { kind: SyntaxKind.LocalStatement, start, end, declarations };
 		overrideParentInImmediateChildren(node);
 
@@ -1349,12 +1373,12 @@ export class Parser {
 	private parseVariableDeclarations(): NodeArray<VariableDeclaration> {
 		const start = this.token.start;
 
-		const elements: VariableDeclaration[] = [];
-		do {
-			elements.push(this.parseVariableDeclaration("Identifier or function expected."));
-		} while (this.parseOptional(SyntaxKind.CommaToken));
+		const elements: VariableDeclaration[] = [this.parseVariableDeclaration("Identifier or 'function' expected.")];
+		while (this.parseOptional(SyntaxKind.CommaToken)) {
+			elements.push(this.parseVariableDeclaration());
+		} 
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: NodeArray<VariableDeclaration> = { kind: SyntaxKind.NodeArray, start, end, elements };
 		overrideParentInImmediateChildren(node);
 
@@ -1369,7 +1393,8 @@ export class Parser {
 		const initialiser = this.parseInitialiser(SyntaxKind.EqualsToken);
 		this.scalarLiteralErrors(initialiser);
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
+		// Here is the only place where semicolon is parsed immediately. Why? Because it's a squirrel lang.
 		this.parseEndOfStatement();
 		const node: ConstStatement = { kind: SyntaxKind.ConstStatement, start, end, name, initialiser };
 		overrideParentInImmediateChildren(node);
@@ -1383,8 +1408,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.ReturnKeyword);
 		const expression = this.canParseEndOfStatement() ? undefined : this.parseExpression();
 
-		const end = this.lexer.lastTokenEnd;
-		this.parseEndOfStatement();
+		const end = this.lexer.lastToken.end;
 		const node: ReturnStatement = { kind: SyntaxKind.ReturnStatement, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -1397,8 +1421,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.YieldKeyword);
 		const expression = this.canParseEndOfStatement() ? undefined : this.parseExpression();
 
-		const end = this.lexer.lastTokenEnd;
-		this.parseEndOfStatement();
+		const end = this.lexer.lastToken.end;
 		const node: YieldStatement = { kind: SyntaxKind.YieldStatement, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -1410,8 +1433,7 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.ContinueKeyword);
 
-		const end = this.lexer.lastTokenEnd;
-		this.parseEndOfStatement();
+		const end = this.lexer.lastToken.end;
 		const node: ContinueStatement = { kind: SyntaxKind.ContinueStatement, start, end };
 
 		return node;
@@ -1422,8 +1444,7 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.BreakKeyword);
 
-		const end = this.lexer.lastTokenEnd;
-		this.parseEndOfStatement();
+		const end = this.lexer.lastToken.end;
 		const node: BreakStatement = { kind: SyntaxKind.BreakStatement, start, end };
 
 		return node;
@@ -1436,7 +1457,7 @@ export class Parser {
 		let name: Identifier | PropertyAccessExpression = this.parseIdentifierWithDiagnostic();
 		while (this.parseOptional(SyntaxKind.ColonColonToken)) {
 			const property = this.parseIdentifierWithDiagnostic();
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			name = { kind: SyntaxKind.PropertyAccessExpression, start, end, expression: name, property };
 			overrideParentInImmediateChildren(name);
 		}
@@ -1444,7 +1465,7 @@ export class Parser {
 		const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
 		const statement = this.parseStatement();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: FunctionDeclaration = { kind: SyntaxKind.FunctionDeclaration, start, end, name, environment, parameters, statement };
 		overrideParentInImmediateChildren(node);
 
@@ -1463,7 +1484,7 @@ export class Parser {
 		const inherits = this.parseOptional(SyntaxKind.ExtendsKeyword) ? this.parseUnaryExpressionOrHigher() : undefined;
 		const members = this.parseClassMembers();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ClassDeclaration = { kind: SyntaxKind.ClassDeclaration, start, end, name, inherits, members };
 		overrideParentInImmediateChildren(node);
 
@@ -1489,7 +1510,7 @@ export class Parser {
 		case SyntaxKind.FunctionKeyword: {
 			const { name, environment, parameters, statement } = this.parseMethod();
 
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const node: ClassMethod | ClassConstructor = name.value === "constructor" ?
 				{ kind: SyntaxKind.ClassConstructor, start, end, isStatic, environment, parameters, statement, hasPrecedingFunction: true } :
 				{ kind: SyntaxKind.ClassMethod, start, end, isStatic, name, environment, parameters, statement };
@@ -1500,7 +1521,7 @@ export class Parser {
 		case SyntaxKind.ConstructorKeyword: {
 			const { environment, parameters, statement } = this.parseConstructor();
 
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const node: ClassConstructor = { kind: SyntaxKind.ClassConstructor, start, end, isStatic, environment, parameters, statement, hasPrecedingFunction: false };
 			overrideParentInImmediateChildren(node);
 
@@ -1509,7 +1530,7 @@ export class Parser {
 		default: {
 			const { name, initialiser } = this.parseProperty(AllowedPropertyName.Identifier | AllowedPropertyName.Computed, /*optionalInitialisation*/ false);
 
-			const end = this.lexer.lastTokenEnd;
+			const end = this.lexer.lastToken.end;
 			const node: ClassProperty = { kind: SyntaxKind.ClassProperty, start, end, name, isStatic, initialiser };
 			overrideParentInImmediateChildren(node);
 
@@ -1525,7 +1546,7 @@ export class Parser {
 		const name = this.parseIdentifierWithDiagnostic();
 		const members = this.parseEnumMembers();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: EnumDeclaration = { kind: SyntaxKind.EnumDeclaration, start, end, name, members };
 		overrideParentInImmediateChildren(node);
 
@@ -1551,7 +1572,7 @@ export class Parser {
 			this.scalarLiteralErrors(initialiser);
 		}
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: EnumMember = { kind: SyntaxKind.EnumMember, start, end, name, initialiser };
 		overrideParentInImmediateChildren(node);
 
@@ -1576,12 +1597,12 @@ export class Parser {
 		const start = this.token.start;
 
 		this.parseExpected(SyntaxKind.CatchKeyword);
-		this.parseExpected(SyntaxKind.OpenBraceToken);
+		this.parseExpected(SyntaxKind.OpenParenthesisToken);
 		const variable = this.parseSimpleVariableDeclaration();
-		this.parseExpected(SyntaxKind.CloseBraceToken);
+		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 		const statement = this.parseStatement();
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: CatchClause = { kind: SyntaxKind.CatchClause, start, end, variable, statement };
 		overrideParentInImmediateChildren(node);
 
@@ -1594,8 +1615,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.ThrowKeyword);
 		const expression = this.parseExpression();
 
-		const end = this.lexer.lastTokenEnd;
-		this.parseEndOfStatement();
+		const end = this.lexer.lastToken.end;
 		const node: ThrowStatement = { kind: SyntaxKind.ThrowStatement, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
@@ -1607,11 +1627,10 @@ export class Parser {
 
 		const expression = this.parseExpression("Statement expected.");
 
-		const end = this.lexer.lastTokenEnd;
+		const end = this.lexer.lastToken.end;
 		const node: ExpressionStatement = { kind: SyntaxKind.ExpressionStatement, start, end, expression };
 		overrideParentInImmediateChildren(node);
 
 		return node;
 	}
 }
-

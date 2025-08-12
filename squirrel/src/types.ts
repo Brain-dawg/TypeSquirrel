@@ -503,7 +503,6 @@ export interface VScriptDiagnostic extends ReadonlyTextRange {
 export interface Token<TKind extends SyntaxKind> extends ReadonlyTextRange {
 	readonly kind: TKind;
 	readonly value: TKind extends ValuedTokenKind ? string : undefined;
-	hasPrecedingLineBreak: boolean;
 	doc?: Token<SyntaxKind.DocComment>;
 }
 
@@ -649,6 +648,7 @@ export interface WhileStatement extends IterationStatement {
 
 export type ForInitialiser =
 	| LocalStatement
+	| LocalFunctionDeclaration
 	| Expression;
 
 export interface ForStatement extends LocalsContainer, IterationStatement {
@@ -926,11 +926,7 @@ export interface UnaryExpression extends Expression {
 
 }
 
-export interface LeftHandSideExpression extends UnaryExpression {
-
-}
-
-export interface PrimaryExpression extends LeftHandSideExpression {
+export interface PrimaryExpression extends UnaryExpression {
 
 }
 
@@ -1075,21 +1071,21 @@ export interface ConditionalExpression extends Expression {
 	readonly whenFalse: Expression;
 }
 
-export interface PropertyAccessExpression extends LeftHandSideExpression {
+export interface PropertyAccessExpression extends Expression {
 	readonly kind: SyntaxKind.PropertyAccessExpression;
-	readonly expression: LeftHandSideExpression;
+	readonly expression: Expression;
 	readonly property: Identifier;
 }
 
-export interface ElementAccessExpression extends LeftHandSideExpression {
+export interface ElementAccessExpression extends Expression {
 	readonly kind: SyntaxKind.ElementAccessExpression;
-	readonly expression: LeftHandSideExpression;
+	readonly expression: Expression;
 	readonly argumentExpression: Expression;
 }
 
-export interface CallExpression extends CallLikeBase, LeftHandSideExpression {
+export interface CallExpression extends CallLikeBase, Expression {
 	readonly kind: SyntaxKind.CallExpression;
-	readonly expression: LeftHandSideExpression;
+	readonly expression: Expression;
 }
 
 
@@ -1134,35 +1130,6 @@ export function isValidSlotExpression(kind: SyntaxKind) {
 	}
 }
 
-export function isLeftHandSideExpression(kind: SyntaxKind) {
-	switch (kind) {
-	case SyntaxKind.PropertyAccessExpression:
-	case SyntaxKind.ElementAccessExpression:
-	case SyntaxKind.RootAccessExpression:
-	case SyntaxKind.CallExpression:
-	case SyntaxKind.ArrayLiteralExpression:
-	case SyntaxKind.ParenthesisedExpression:
-	case SyntaxKind.TableLiteralExpression:
-	case SyntaxKind.ClassExpression:
-	case SyntaxKind.FunctionExpression:
-	case SyntaxKind.Identifier:
-	case SyntaxKind.IntegerLiteral:
-	case SyntaxKind.FloatLiteral:
-	case SyntaxKind.StringLiteral:
-	case SyntaxKind.VerbatimStringLiteral:
-	case SyntaxKind.TrueLiteral:
-	case SyntaxKind.FalseLiteral:
-	case SyntaxKind.NullLiteral:
-	case SyntaxKind.ThisExpression:
-	case SyntaxKind.BaseExpression:
-	case SyntaxKind.FileLiteral:
-	case SyntaxKind.LineLiteral:
-		return true;
-	default:
-		return false;
-	}
-}
-
 export const TokenToExpression = new Map<SyntaxKind, SyntaxKind>([
 	[SyntaxKind.ThisKeyword, SyntaxKind.ThisExpression],
 	[SyntaxKind.BaseKeyword, SyntaxKind.BaseExpression],
@@ -1182,6 +1149,9 @@ type ForEachChildFunction<TNode extends Node> = (node: TNode, callback: (childNo
 type ForEachChildTable = { [kind in SyntaxKind]?: ForEachChildFunction<any>; }
 
 const forEachChildTable: ForEachChildTable = {
+	[SyntaxKind.SourceFile]: function (node: SourceFile, callback: (childNode: Node) => void): void {
+		callback(node.statements);	
+	},
 	[SyntaxKind.NodeArray]: function(node: NodeArray<Node>, callback: (childNode: Node) => void): void {
 		for (const element of node.elements) {
 			callback(element);
@@ -1202,6 +1172,10 @@ const forEachChildTable: ForEachChildTable = {
 	},
 	[SyntaxKind.LocalStatement]: function(node: LocalStatement, callback: (childNode: Node) => void): void {
 		callback(node.declarations);
+	},
+	[SyntaxKind.ConstStatement]: function (node: ConstStatement, callback: (childNode: Node) => void): void {
+		callback(node.name);
+		callback(node.initialiser);
 	},
 	[SyntaxKind.VariableDeclaration]: function(node: VariableDeclaration, callback: (childNode: Node) => void): void {
 		callback(node.name);
