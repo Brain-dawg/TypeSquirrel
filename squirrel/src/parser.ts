@@ -397,7 +397,7 @@ export class Parser {
 		return node;
 	}
 
-	private isListTerminator(parsingContext: ParsingContext) {
+	private isListTerminator(parsingContext: ParsingContext): boolean {
 		const kind = this.token.kind;
 		if (kind === SyntaxKind.EndOfFileToken) {
 			// Being at the end of the file ends all lists.
@@ -419,10 +419,12 @@ export class Parser {
 		case ParsingContext.Parameters:
 		case ParsingContext.ArgumentExpressions:
 			return kind === SyntaxKind.CloseParenthesisToken;
+		default:
+			return false;
 		}
 	}
 
-	private isListElement(context: ParsingContext) {
+	private isListElement(context: ParsingContext): boolean {
 		const kind = this.token.kind;
 
 		switch (context) {
@@ -444,6 +446,8 @@ export class Parser {
 			return isTokenAValidIdentifier(this.token) || kind === SyntaxKind.DotDotDotToken;
 		case ParsingContext.ArgumentExpressions:
 			return this.isStartOfExpression();
+		default:
+			return false;
 		}
 	}
 
