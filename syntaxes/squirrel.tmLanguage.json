@@ -1354,6 +1354,10 @@
 				{
 					"name": "variable.language.base.squirrel",
 					"match": "(?<![_A-Za-z])base\\b"
+				},
+				{
+					"name": "keyword.operator.expression.rawcall.squirrel",
+					"match": "(?<![_A-Za-z])rawcall\\b"
 				}
 			]
 		},
