@@ -525,7 +525,7 @@ export interface StringToken<TKind extends StringTokenKind>
 
 export const enum SymbolFlags {
 	None = 0,
-	Global                 = 1 << 0,
+	Global                 = 1 << 0,  // A variable in a root or const table
 	FunctionScopedVariable = 1 << 1,  // Parameter
 	BlockScopedVariable    = 1 << 2,  // A block-scoped variable (local)
 	Property               = 1 << 3,  // Property
@@ -533,24 +533,20 @@ export const enum SymbolFlags {
 	Function               = 1 << 5,  // Function
 	Class                  = 1 << 6,  // Class
 	Enum                   = 1 << 7,  // Enum
-	TableLiteral           = 1 << 8,  // Table Literal
+	Table                  = 1 << 8,  // Table Literal
 	Method                 = 1 << 9,  // Method
 	Constructor            = 1 << 10, // Constructor
-	NewSlot                = 1 << 11, // Assignment treated as declaration (eg `this.prop <- 1`)
 	
 	Variable = FunctionScopedVariable | BlockScopedVariable,
-
-	All = -1
 }
 
-export type SymbolTable = Map<string, Symbol>;
+export type SymbolTable = Map<string, Symbol[]>;
 
 export interface Symbol {
 	flags: SymbolFlags;
 	name: string;
-	declaration?: Declaration;
+	declaration: Declaration;
 	members?: SymbolTable;
-	parent?: Symbol;
 }
 
 export interface LocalsContainer extends Node {

@@ -15,12 +15,13 @@ import {
 } from 'vscode-languageserver/node';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 
-import { isTokenAComment, isTokenAString, isTokenTrivia, Lexer, Parser, StringToken, Token, TokenIterator, SyntaxKind } from 'squirrel';
+import { isTokenAComment, isTokenAString, isTokenTrivia, Lexer, Parser, StringToken, Token, TokenIterator, SyntaxKind, SourceFile, Binder } from 'squirrel';
 
 import onHoverHandler from './onHover';
 import { onCompletionHandler, onCompletionResolveHandler } from './onCompletion';
 import onSignatureHelpHandler from './onSignatureHelp';
 import onCodeActionHandler from './onCodeAction';
+import onDocumentSymbolHandler from './onDocumentSymbol';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -60,7 +61,8 @@ connection.onInitialize((params: InitializeParams) => {
 			codeActionProvider: {
 				codeActionKinds: [CodeActionKind.QuickFix],
 				resolveProvider: false
-			}
+			},
+			documentSymbolProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -107,7 +109,8 @@ let globalSettings: Settings = defaultSettings;
 
 interface DocumentInfo {
 	lexer: Lexer,
-	parser: Parser
+	parser: Parser,
+	sourceFile: SourceFile
 }
 
 export const documentInfo = new Map<string, DocumentInfo>();
@@ -183,10 +186,6 @@ connection.onRequest('getToken', (params: { uri: string, offset: number }): Toke
 }); 
 
 function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagnostic[]) {
-	for (let token = lexer.lex(); token.kind !== SyntaxKind.EndOfFileToken; token = lexer.lex()) {
-		// lex
-	}
-
 	const iterator = new TokenIterator(lexer.getTokens());
 	while (iterator.hasNext()) {
 		let token = iterator.next();
@@ -243,15 +242,16 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	
 	const parser = new Parser(lexer);
 	const sourceFile = parser.parseSourceFile();
+	const binder = new Binder();
+	binder.bindSourceFile(sourceFile);
 
 	documentInfo.set(document.uri, {
 		lexer,
-		parser
+		parser,
+		sourceFile
 	});
 
 	if (!settings.enableDiagnostics) {
-		processLexer(document, lexer);
-
 		return [];
 	}
 
@@ -278,7 +278,7 @@ function runParse(document: TextDocument, lexer: Lexer, diagnostics: Diagnostic[
 	const iterator = new TokenIterator(lexer.getTokens());
 	while (iterator.hasNext()) {
 		const token = iterator.next();
-		if (token.kind !== SyntaxKind.Identifier) {
+		if (token.kind !== SyntaxKind.IdentifierToken) {
 			continue;
 		}
 
@@ -436,5 +436,5 @@ connection.onCompletionResolve(onCompletionResolveHandler);
 connection.onHover(onHoverHandler);
 connection.onSignatureHelp(onSignatureHelpHandler);
 connection.onCodeAction(onCodeActionHandler);
-
+connection.onDocumentSymbol(onDocumentSymbolHandler);
 connection.listen();

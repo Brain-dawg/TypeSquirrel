@@ -3,3 +3,4 @@ export { default as CharCode } from './charCode';
 export * from './lexer'; 
 export * from './parser';
 export * from './types';
+export * from './binder';
