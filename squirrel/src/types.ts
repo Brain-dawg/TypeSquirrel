@@ -183,6 +183,7 @@ export const enum SyntaxKind {
 
 	LocalStatement,
 	VariableDeclaration,
+	ParameterDeclaration,
 	ConstStatement,
 	FunctionDeclaration,
 	LocalFunctionDeclaration,
@@ -204,7 +205,7 @@ export const enum SyntaxKind {
 	Identifier,
 	VariedArgs,
 
-	ComputedPropertyName,
+	ComputedName,
 	BinaryExpression,
 	ConditionalExpression,
 	PrefixUnaryExpression,
@@ -228,16 +229,19 @@ export const enum SyntaxKind {
 	ArrayLiteralExpression,
 	TableLiteralExpression,
 
-	TableProperty,
+	TablePropertyAssignment,
 	TableMethod,
 	TableConstructor,
 
-	ClassProperty,
+	ClassPropertyAssignment,
 	ClassMethod,
 	ClassConstructor,
 
-	FileLiteral,
-	LineLiteral,
+	PostCallInitialiser,
+	PostCallInitialiserPropertyAssignment,
+
+	FileExpression,
+	LineExpression,
 	
 	SourceFile,
 	
@@ -521,16 +525,21 @@ export interface StringToken<TKind extends StringTokenKind>
 
 export const enum SymbolFlags {
 	None = 0,
-	Global = 1 << 0,
+	Global                 = 1 << 0,
 	FunctionScopedVariable = 1 << 1,  // Parameter
-	BlockScopedVariable = 1 << 2,  // A block-scoped variable (local)
-	Property = 1 << 3,  // Property or enum member
-	EnumMember = 1 << 4,  // Enum member
-	Function = 1 << 5,  // Function
-	Class = 1 << 6,  // Class
-	Enum = 1 << 7,  // Enum
-	Method = 1 << 8,  // Method
-	Constructor = 1 << 9,  // Constructor
+	BlockScopedVariable    = 1 << 2,  // A block-scoped variable (local)
+	Property               = 1 << 3,  // Property
+	EnumMember             = 1 << 4,  // Enum member
+	Function               = 1 << 5,  // Function
+	Class                  = 1 << 6,  // Class
+	Enum                   = 1 << 7,  // Enum
+	TableLiteral           = 1 << 8,  // Table Literal
+	Method                 = 1 << 9,  // Method
+	Constructor            = 1 << 10, // Constructor
+	NewSlot                = 1 << 11, // Assignment treated as declaration (eg `this.prop <- 1`)
+	
+	Variable = FunctionScopedVariable | BlockScopedVariable,
+
 	All = -1
 }
 
@@ -539,11 +548,40 @@ export type SymbolTable = Map<string, Symbol>;
 export interface Symbol {
 	flags: SymbolFlags;
 	name: string;
-	declarations?: NodeArray<Declaration>;
-	valueDeclaration?: Declaration;
+	declaration?: Declaration;
 	members?: SymbolTable;
 	parent?: Symbol;
 }
+
+export interface LocalsContainer extends Node {
+	locals?: SymbolTable;
+}
+
+// [identifier] = ...
+// looks the same as
+// identifier = ...
+// without this intermediate interface
+export interface ComputedName extends Node {
+    readonly kind: SyntaxKind.ComputedName;
+    parent?: Declaration;
+    readonly expression: Expression;
+}
+
+
+export type Name =
+	| Identifier
+	| StringLiteral
+	| VerbatimStringLiteral
+	| ComputedName;
+
+export interface Declaration extends Node {
+	symbol?: Symbol;
+}
+
+export interface NamedDeclaration extends Declaration {
+	readonly name: Name;
+}
+
 
 export interface Node extends ReadonlyTextRange {
 	readonly kind: SyntaxKind;
@@ -554,36 +592,6 @@ export interface NodeArray<T extends Node> extends Node {
 	readonly kind: SyntaxKind.NodeArray;
 	readonly elements: T[];
 }
-
-export interface TokenNode<TKind extends SyntaxKind> extends Node {
-	readonly kind: TKind;
-	readonly doc?: Token<SyntaxKind.DocComment>;
-	readonly value?: string;
-}
-
-export type PropertyName =
-	| Identifier
-	| StringLiteral
-	| VerbatimStringLiteral
-	| Expression;
-
-export interface Declaration extends Node {
-	symbol?: Symbol;
-}
-
-export interface NamedDeclaration extends Declaration {
-	readonly name: PropertyName;
-}
-
-export interface DynamicNamedDeclaration extends NamedDeclaration {
-    readonly name: Expression;
-}
-
-
-export interface LocalsContainer extends Node {
-	locals?: SymbolTable;
-}
-
 
 export interface SourceFile extends Node, LocalsContainer {
 	readonly kind: SyntaxKind.SourceFile;
@@ -597,7 +605,7 @@ export interface EmptyStatement extends Node {
 	readonly kind: SyntaxKind.EmptyStatement;
 }
 
-export interface BlockStatement extends Statement {
+export interface BlockStatement extends Statement, LocalsContainer {
 	readonly kind: SyntaxKind.BlockStatement;
 	readonly statements: NodeArray<Statement>;
 }
@@ -618,11 +626,11 @@ export interface LocalStatement extends Statement {
 	readonly declarations: NodeArray<VariableDeclaration>;
 }
 
-export interface VariableDeclaration extends NamedDeclaration{
+export interface VariableDeclaration extends NamedDeclaration {
 	readonly kind: SyntaxKind.VariableDeclaration;
 	readonly name: Identifier;
 	readonly initialiser?: Expression;
-};
+}
 
 
 export interface IfStatement extends Statement {
@@ -707,13 +715,13 @@ export interface CaseClause extends Statement {
 	readonly kind: SyntaxKind.CaseClause;
 	readonly expression: Expression;
 	readonly statements: NodeArray<Statement>;
-	// fallthrough?: CaseOrDefaultClause
+	// fallthrough?: CaseOrDefaultClause;
 }
 
 export interface DefaultClause extends Statement {
 	readonly kind: SyntaxKind.DefaultClause;
 	readonly statements: NodeArray<Statement>;
-	// fallthrough?: CaseOrDefaultClause
+	// fallthrough?: CaseOrDefaultClause;
 }
 
 export interface ThrowStatement extends Statement {
@@ -735,14 +743,15 @@ export interface CatchClause extends Node, LocalsContainer {
 }
 
 
-export interface ClassLikeDeclarationBase extends Node {
+export interface ClassLikeDeclarationBase extends Declaration {
 	readonly kind: SyntaxKind.ClassDeclaration | SyntaxKind.ClassExpression;
 	// extends ::a.b.c.d {}
 	readonly inherits?: Expression;
 	readonly members: NodeArray<ClassMember>;
 }
 
-export interface ClassDeclaration extends ClassLikeDeclarationBase, DynamicNamedDeclaration {
+export interface ClassDeclaration extends ClassLikeDeclarationBase, NamedDeclaration {
+	readonly name: Identifier | ComputedName;
 	readonly kind: SyntaxKind.ClassDeclaration;
 }
 
@@ -754,18 +763,22 @@ export interface ClassMember extends Declaration {
 	readonly isStatic: boolean;
 }
 
-export interface ClassProperty extends ClassMember, PropertyElement {
-	readonly kind: SyntaxKind.ClassProperty;
+export interface ClassPropertyAssignment extends ClassMember, PropertyAssignmentBase {
+	readonly kind: SyntaxKind.ClassPropertyAssignment;
+	parent?: ClassLikeDeclarationBase;
 	// To make this more error tolerant string names are also allowed
 	// readonly name: Identifier | Expression;
+	readonly initialiser: Expression;
 }
 
-export interface ClassMethod extends ClassMember, MethodDeclaration {
+export interface ClassMethod extends ClassMember, MethodDeclarationBase {
 	readonly kind: SyntaxKind.ClassMethod;
+	parent?: ClassLikeDeclarationBase;
 }
 
-export interface ClassConstructor extends ClassMember, ConstructorDeclaration {
+export interface ClassConstructor extends ClassMember, ConstructorDeclarationBase {
 	readonly kind: SyntaxKind.ClassConstructor;
+	parent?: ClassLikeDeclarationBase;
 }
 
 
@@ -776,53 +789,50 @@ export interface EnumDeclaration extends NamedDeclaration {
 }
 
 
-export interface EnumMember extends PropertyElement {
+export interface EnumMember extends PropertyAssignmentBase {
 	readonly kind: SyntaxKind.EnumMember;
 	parent?: EnumDeclaration;
 	// Only the identifiers are allowed, but to make this more error tolerant other property names are also allowed
 	// readonly name: Identifier;
-	readonly initialiser?: Expression; //ScalarLiteralExpression;
+	// readonly initialiser?: ScalarLiteralExpression;
 }
 
 
-export interface FunctionLikeDeclarationBase extends Node {
+export interface FunctionLikeDeclarationBase extends Declaration, LocalsContainer {
 	readonly environment?: Expression;
 	readonly parameters: NodeArray<Parameter>;
+}
+
+// The only exception is a lambda expression
+export interface StatementFunctionBase extends FunctionLikeDeclarationBase {
+	readonly statement: Statement;
 }
 
 export interface VariedArgs extends Node {
 	readonly kind: SyntaxKind.VariedArgs;
 }
 
-export type Parameter = VariableDeclaration | VariedArgs;
+export interface ParameterDeclaration extends NamedDeclaration {
+	readonly kind: SyntaxKind.ParameterDeclaration;
+	readonly name: Identifier;
+	readonly initialiser?: Expression;
+}
 
-export interface FunctionDeclaration extends FunctionLikeDeclarationBase, DynamicNamedDeclaration, LocalsContainer {
+export type Parameter = ParameterDeclaration | VariedArgs;
+
+export interface FunctionDeclaration extends StatementFunctionBase, NamedDeclaration {
 	readonly kind: SyntaxKind.FunctionDeclaration;
 	// function a::b::c::d() {}
-	readonly name: Identifier | PropertyAccessExpression;
-	readonly statement: Statement;
+	readonly name: Identifier | ComputedName;
 }
 
-export interface LocalFunctionDeclaration extends FunctionLikeDeclarationBase, NamedDeclaration, LocalsContainer {
+export interface LocalFunctionDeclaration extends StatementFunctionBase, NamedDeclaration {
 	readonly kind: SyntaxKind.LocalFunctionDeclaration;
 	readonly name: Identifier;
-	readonly statement: Statement;
 }
 
-export interface MethodDeclaration extends FunctionLikeDeclarationBase, NamedDeclaration, LocalsContainer {
-	readonly name: Identifier;
-	readonly statement: Statement;
-}
-
-export interface ConstructorDeclaration extends FunctionLikeDeclarationBase, LocalsContainer {
-	// function constructor() {} | constructor() {} both work
-	readonly hasPrecedingFunction: boolean;
-	readonly statement: Statement;
-}
-
-export interface FunctionExpression extends FunctionLikeDeclarationBase {
+export interface FunctionExpression extends StatementFunctionBase {
 	readonly kind: SyntaxKind.FunctionExpression;
-	readonly statement: Statement;
 }
 
 export interface LambdaExpression extends FunctionLikeDeclarationBase {
@@ -830,9 +840,146 @@ export interface LambdaExpression extends FunctionLikeDeclarationBase {
 	readonly expression: Expression;
 }
 
-export interface PropertyElement extends NamedDeclaration {
+
+export interface MethodDeclarationBase extends StatementFunctionBase, NamedDeclaration {
+	readonly kind: SyntaxKind.ClassMethod | SyntaxKind.TableMethod;
+	readonly name: Identifier;
+}
+
+export interface ConstructorDeclarationBase extends StatementFunctionBase {
+	readonly kind: SyntaxKind.ClassConstructor | SyntaxKind.TableConstructor;
+	// function constructor() {} | constructor() {} both work
+	readonly hasPrecedingFunction: boolean;
+}
+
+
+export interface PropertyAssignmentBase extends NamedDeclaration {
+	readonly kind: SyntaxKind.ClassPropertyAssignment | SyntaxKind.TablePropertyAssignment | SyntaxKind.EnumMember | SyntaxKind.PostCallInitialiserPropertyAssignment;
 	readonly initialiser?: Expression;
 }
+
+
+
+export interface Expression extends Node {
+
+}
+
+export interface UnaryExpression extends Expression {
+
+}
+
+export interface PrimaryExpression extends UnaryExpression {
+
+}
+
+export interface RootAccessExpression extends PrimaryExpression {
+	readonly kind: SyntaxKind.RootAccessExpression;
+	readonly name: Identifier;
+}
+
+export interface ParenthesisedExpression extends PrimaryExpression {
+	readonly kind: SyntaxKind.ParenthesisedExpression;
+	readonly expression: Expression;
+}
+
+
+export interface ThisExpression extends PrimaryExpression {
+	readonly kind: SyntaxKind.ThisExpression;
+}
+
+export interface BaseExpression extends PrimaryExpression {
+	readonly kind: SyntaxKind.BaseExpression;
+}
+
+export interface FileExpression extends PrimaryExpression {
+	readonly kind: SyntaxKind.FileExpression;
+}
+
+export interface LineExpression extends PrimaryExpression {
+	readonly kind: SyntaxKind.LineExpression;
+}
+
+
+export interface LiteralExpression extends PrimaryExpression {
+	readonly value: string;
+}
+
+export interface IntegerLiteral extends LiteralExpression {
+	readonly kind: SyntaxKind.IntegerLiteral;
+}
+
+export interface FloatLiteral extends LiteralExpression {
+	readonly kind: SyntaxKind.FloatLiteral;
+}
+
+export interface StringLiteral extends LiteralExpression {
+	readonly kind: SyntaxKind.StringLiteral;
+}
+
+export interface VerbatimStringLiteral extends LiteralExpression {
+	readonly kind: SyntaxKind.VerbatimStringLiteral;
+}
+
+export interface Identifier extends LiteralExpression {
+	readonly kind: SyntaxKind.Identifier;
+}
+
+export interface NullLiteral extends PrimaryExpression {
+	readonly kind: SyntaxKind.NullLiteral;
+}
+
+export interface TrueLiteral extends PrimaryExpression {
+	readonly kind: SyntaxKind.TrueLiteral;
+}
+
+export interface FalseLiteral extends PrimaryExpression {
+	readonly kind: SyntaxKind.FalseLiteral;
+}
+
+export type BooleanLiteral = TrueLiteral | FalseLiteral;
+
+
+export interface DeleteExpression extends UnaryExpression {
+	readonly kind: SyntaxKind.DeleteExpression;
+	readonly expression: UnaryExpression;
+}
+
+export interface ResumeExpression extends UnaryExpression {
+	readonly kind: SyntaxKind.ResumeExpression;
+	readonly expression: UnaryExpression;
+}
+
+export interface TypeOfExpression extends UnaryExpression {
+	readonly kind: SyntaxKind.TypeOfExpression;
+	readonly expression: UnaryExpression;
+}
+
+export interface CloneExpression extends UnaryExpression {
+	readonly kind: SyntaxKind.CloneExpression;
+	readonly expression: UnaryExpression;
+}
+
+export interface PostCallInitialiser extends Node {
+	readonly kind: SyntaxKind.PostCallInitialiser;
+	readonly members: NodeArray<TableLiteralMember>;
+}
+
+export interface PostCallInitialiserPropertyAssignment extends PropertyAssignmentBase {
+	readonly kind: SyntaxKind.PostCallInitialiserPropertyAssignment;
+	readonly initialiser: Expression;
+	// readonly name: Identifier | ComputedName;
+}
+
+export interface CallLikeBase {
+	readonly kind: SyntaxKind.CallExpression | SyntaxKind.RawCallExpression;
+	readonly argumentExpressions: NodeArray<Expression>;
+	readonly postCallInitialiser?: PostCallInitialiser;
+}
+
+export interface RawCallExpression extends CallLikeBase, UnaryExpression {
+	readonly kind: SyntaxKind.RawCallExpression;
+}
+
 
 
 export type BinaryOperator =
@@ -918,112 +1065,6 @@ export function getBinaryOperatorPrecedence(kind: SyntaxKind): OperatorPrecedenc
 	return OperatorPrecedence.Invalid;
 }
 
-export interface Expression extends Node {
-
-}
-
-export interface UnaryExpression extends Expression {
-
-}
-
-export interface PrimaryExpression extends UnaryExpression {
-
-}
-
-export interface RootAccessExpression extends PrimaryExpression {
-	readonly kind: SyntaxKind.RootAccessExpression;
-	readonly name: Identifier;
-}
-
-export interface ParenthesisedExpression extends PrimaryExpression {
-	readonly kind: SyntaxKind.ParenthesisedExpression;
-	readonly expression: Expression;
-}
-
-
-export interface ThisExpression extends PrimaryExpression {
-	readonly kind: SyntaxKind.ThisExpression;
-}
-
-export interface BaseExpression extends PrimaryExpression {
-	readonly kind: SyntaxKind.BaseExpression;
-}
-
-export interface FileExpression extends PrimaryExpression {
-	readonly kind: SyntaxKind.FileLiteral;
-}
-
-export interface LineLiteral extends PrimaryExpression {
-	readonly kind: SyntaxKind.LineLiteral;
-}
-
-
-export interface DeleteExpression extends UnaryExpression {
-	readonly kind: SyntaxKind.DeleteExpression;
-	readonly expression: UnaryExpression;
-}
-
-export interface ResumeExpression extends UnaryExpression {
-	readonly kind: SyntaxKind.ResumeExpression;
-	readonly expression: UnaryExpression;
-}
-
-export interface TypeOfExpression extends UnaryExpression {
-	readonly kind: SyntaxKind.TypeOfExpression;
-	readonly expression: UnaryExpression;
-}
-
-export interface CloneExpression extends UnaryExpression {
-	readonly kind: SyntaxKind.CloneExpression;
-	readonly expression: UnaryExpression;
-}
-
-export interface CallLikeBase {
-	readonly argumentExpressions: NodeArray<Expression>;
-	readonly postCallInitialisation?: NodeArray<TableLiteralMember>;
-}
-
-export interface RawCallExpression extends CallLikeBase, UnaryExpression {
-	readonly kind: SyntaxKind.RawCallExpression;
-}
-
-export interface LiteralExpression extends PrimaryExpression {
-	readonly value: string;
-}
-
-export interface IntegerLiteral extends LiteralExpression {
-	readonly kind: SyntaxKind.IntegerLiteral
-}
-
-export interface FloatLiteral extends LiteralExpression {
-	readonly kind: SyntaxKind.FloatLiteral;
-}
-
-export interface StringLiteral extends LiteralExpression {
-	readonly kind: SyntaxKind.StringLiteral;
-}
-
-export interface VerbatimStringLiteral extends LiteralExpression {
-	readonly kind: SyntaxKind.VerbatimStringLiteral;
-}
-
-export interface Identifier extends LiteralExpression {
-	readonly kind: SyntaxKind.Identifier;
-}
-
-export interface NullLiteral extends PrimaryExpression {
-	readonly kind: SyntaxKind.NullLiteral;
-}
-
-export interface TrueLiteral extends PrimaryExpression {
-	readonly kind: SyntaxKind.TrueLiteral;
-}
-
-export interface FalseLiteral extends PrimaryExpression {
-	readonly kind: SyntaxKind.FalseLiteral;
-}
-
-export type BooleanLiteral = TrueLiteral | FalseLiteral;
 /*
 export type ScalarLiteralExpression =
 	| NumericLiteral
@@ -1097,24 +1138,28 @@ export interface ArrayLiteralExpression extends PrimaryExpression {
 
 
 export interface TableLiteralExpression extends PrimaryExpression {
-	readonly kind: SyntaxKind.TableLiteralExpression,
-	readonly members: NodeArray<TableLiteralMember>
+	readonly kind: SyntaxKind.TableLiteralExpression;
+	readonly members: NodeArray<TableLiteralMember>;
 }
 
 export interface TableLiteralMember extends Declaration {
 	
 }
 
-export interface TableProperty extends TableLiteralMember, PropertyElement {
-	readonly kind: SyntaxKind.TableProperty;
+export interface TablePropertyAssignment extends TableLiteralMember, PropertyAssignmentBase {
+	readonly kind: SyntaxKind.TablePropertyAssignment;
+	readonly initialiser: Expression;
+	parent?: TableLiteralExpression;
 }
 
-export interface TableMethod extends MethodDeclaration, TableLiteralMember {
+export interface TableMethod extends MethodDeclarationBase, TableLiteralMember {
 	readonly kind: SyntaxKind.TableMethod;
+	parent?: TableLiteralExpression;
 }
 
-export interface TableConstructor extends ConstructorDeclaration, LocalsContainer {
+export interface TableConstructor extends ConstructorDeclarationBase {
 	readonly kind: SyntaxKind.TableConstructor;
+	parent?: TableLiteralExpression;
 }
 
 export function isValidSlotExpression(kind: SyntaxKind) {
@@ -1136,8 +1181,8 @@ export const TokenToExpression = new Map<SyntaxKind, SyntaxKind>([
 	[SyntaxKind.NullKeyword, SyntaxKind.NullLiteral],
 	[SyntaxKind.TrueKeyword, SyntaxKind.TrueLiteral],
 	[SyntaxKind.FalseKeyword, SyntaxKind.FalseLiteral],
-	[SyntaxKind.__FILE__Keyword, SyntaxKind.FileLiteral],
-	[SyntaxKind.__LINE__Keyword, SyntaxKind.LineLiteral],
+	[SyntaxKind.__FILE__Keyword, SyntaxKind.FileExpression],
+	[SyntaxKind.__LINE__Keyword, SyntaxKind.LineExpression],
 	
 	[SyntaxKind.StringToken, SyntaxKind.StringLiteral],
 	[SyntaxKind.VerbatimStringToken, SyntaxKind.VerbatimStringLiteral],
@@ -1147,6 +1192,30 @@ export const TokenToExpression = new Map<SyntaxKind, SyntaxKind>([
 
 type ForEachChildFunction<TNode extends Node> = (node: TNode, callback: (childNode: Node) => void) => void;
 type ForEachChildTable = { [kind in SyntaxKind]?: ForEachChildFunction<any>; }
+
+function functionLike(node: FunctionDeclaration | LocalFunctionDeclaration | MethodDeclarationBase, callback: (childNode: Node) => void): void {
+	callback(node.name);
+	if (node.environment) {
+		callback(node.environment);
+	}
+	callback(node.parameters);
+	callback(node.statement);
+}
+
+function constructorLike(node: ConstructorDeclarationBase, callback: (childNode: Node) => void): void {
+	if (node.environment) {
+		callback(node.environment);
+	}
+	callback(node.parameters);
+	callback(node.statement);
+}
+
+function propertyLike(node: PropertyAssignmentBase, callback: (childNode: Node) => void): void {
+	callback(node.name);
+	if (node.initialiser) {
+		callback(node.initialiser);
+	}
+}
 
 const forEachChildTable: ForEachChildTable = {
 	[SyntaxKind.SourceFile]: function (node: SourceFile, callback: (childNode: Node) => void): void {
@@ -1223,16 +1292,8 @@ const forEachChildTable: ForEachChildTable = {
 		callback(node.variable);
 		callback(node.statement);
 	},
-	[SyntaxKind.FunctionDeclaration]: function(node: FunctionDeclaration, callback: (childNode: Node) => void): void {
-		callback(node.name);
-		callback(node.parameters);
-		callback(node.statement);
-	},
-	[SyntaxKind.LocalFunctionDeclaration]: function(node: LocalFunctionDeclaration, callback: (childNode: Node) => void): void {
-		callback(node.name);
-		callback(node.parameters);
-		callback(node.statement);
-	},
+	[SyntaxKind.FunctionDeclaration]: functionLike,
+	[SyntaxKind.LocalFunctionDeclaration]: functionLike,
 	[SyntaxKind.ReturnStatement]: function(node: ReturnStatement, callback: (childNode: Node) => void): void {
 		if (node.expression) {
 			callback(node.expression);
@@ -1253,24 +1314,20 @@ const forEachChildTable: ForEachChildTable = {
 		}
 		callback(node.members);
 	},
-	[SyntaxKind.TableMethod]: function(node: MethodDeclaration, callback: (childNode: Node) => void): void {
-		callback(node.name);
-		callback(node.parameters);
-		callback(node.statement);
+	[SyntaxKind.ClassPropertyAssignment]: propertyLike,
+	[SyntaxKind.ClassMethod]: functionLike,
+	[SyntaxKind.ClassConstructor]: constructorLike,
+	[SyntaxKind.TableLiteralExpression]: function(node: TableLiteralExpression, callback: (childNode: Node) => void): void {
+		callback(node.members);
 	},
-	[SyntaxKind.TableConstructor]: function(node: ConstructorDeclaration, callback: (childNode: Node) => void): void {
-		callback(node.parameters);
-		callback(node.statement);
-	},
+	[SyntaxKind.TablePropertyAssignment]: propertyLike,
+	[SyntaxKind.TableMethod]: functionLike,
+	[SyntaxKind.TableConstructor]: constructorLike,
 	[SyntaxKind.EnumDeclaration]: function(node: EnumDeclaration, callback: (childNode: Node) => void): void {
 		callback(node.name);
+		callback(node.members);
 	},
-	[SyntaxKind.EnumMember]: function(node: EnumMember, callback: (childNode: Node) => void): void {
-		callback(node.name);
-		if (node.initialiser) {	
-			callback(node.initialiser);
-		}
-	},
+	[SyntaxKind.EnumMember]: propertyLike,
 	[SyntaxKind.CaseClause]: function(node: CaseClause, callback: (childNode: Node) => void): void {
 		callback(node.expression);
 		callback(node.statements);
@@ -1286,6 +1343,10 @@ const forEachChildTable: ForEachChildTable = {
 		callback(node.expression);
 		callback(node.argumentExpressions);
 	},
+	[SyntaxKind.PostCallInitialiser]: function (node: PostCallInitialiser, callback: (childNode: Node) => void): void {
+		callback(node.members);	
+	},
+	[SyntaxKind.PostCallInitialiserPropertyAssignment]: propertyLike,
 	[SyntaxKind.PropertyAccessExpression]: function (node: PropertyAccessExpression, callback: (childNode: Node) => void): void {
 		callback(node.expression);
 		callback(node.property);
@@ -1296,10 +1357,6 @@ const forEachChildTable: ForEachChildTable = {
 	},
 	[SyntaxKind.ArrayLiteralExpression]: function(node: ArrayLiteralExpression, callback: (childNode: Node) => void): void {
 		callback(node.elements);
-	},
-	[SyntaxKind.TableLiteralExpression]: function(node: TableLiteralExpression, callback: (childNode: Node) => void): void {
-		// Table elements are not nodes, they're expressions in an object
-		callback(node.members);
 	},
 	[SyntaxKind.ParenthesisedExpression]: function(node: ParenthesisedExpression, callback: (childNode: Node) => void): void {
 		callback(node.expression);
@@ -1329,6 +1386,23 @@ const forEachChildTable: ForEachChildTable = {
 	},
 	[SyntaxKind.RootAccessExpression]: function (node: RootAccessExpression, callback: (childNode: Node) => void): void {
 		callback(node.name);
+	},
+	[SyntaxKind.FunctionExpression]: function (node: FunctionExpression, callback: (childNode: Node) => void): void {
+		if (node.environment) {
+			callback(node.environment);
+		}
+		callback(node.parameters);
+		callback(node.statement);
+	},
+	[SyntaxKind.LambdaExpression]: function (node: LambdaExpression, callback: (childNode: Node) => void): void {
+		if (node.environment) {
+			callback(node.environment);
+		}
+		callback(node.parameters);
+		callback(node.expression);
+	},
+	[SyntaxKind.ComputedName]: function (node: ComputedName, callback: (childNode: Node) => void): void {
+		callback(node.expression);
 	}
 };
 
@@ -1336,5 +1410,17 @@ export function forEachChild(node: Node, callback: (childNode: Node) => void): v
 	const forEachChildFunction = forEachChildTable[node.kind];
 	if (forEachChildFunction) {
 		forEachChildFunction(node, callback);
+	}
+}
+
+export function isDeclaration(node: Node) {
+	switch (node.kind) {
+	case SyntaxKind.VariableDeclaration:
+	case SyntaxKind.ParameterDeclaration:
+	case SyntaxKind.ClassPropertyAssignment:
+	case SyntaxKind.TablePropertyAssignment:
+		return true;
+	default:
+		return false;
 	}
 }
