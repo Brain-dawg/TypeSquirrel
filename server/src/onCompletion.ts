@@ -316,7 +316,7 @@ function declarationKind(iterator: TokenIterator): SyntaxKind | null {
 		return token.kind;
 	}
 	
-	if (token.kind !== SyntaxKind.Identifier || !iterator.hasPrevious()) {
+	if (token.kind !== SyntaxKind.IdentifierToken || !iterator.hasPrevious()) {
 		return null;
 	}
 
@@ -374,7 +374,7 @@ function getDotRange(iterator: TokenIterator, offset: number): { start: number, 
 	if (token.kind === SyntaxKind.DotToken) {
 		return { start: token.start, end: offset };
 	}
-	if (token.kind !== SyntaxKind.Identifier) {
+	if (token.kind !== SyntaxKind.IdentifierToken) {
 		return null;
 	}
 
@@ -439,7 +439,7 @@ function functionParanthesis(document: TextDocument): boolean {
 
 	let token = iterator.previous();
 
-	if (token.kind === SyntaxKind.Identifier || token.kind === SyntaxKind.FunctionKeyword) {
+	if (token.kind === SyntaxKind.IdentifierToken || token.kind === SyntaxKind.FunctionKeyword) {
 		if (!iterator.hasPrevious()) {
 			return false;
 		}

@@ -1,11 +1,11 @@
-import { StringToken, Token, SyntaxKind, String } from 'squirrel';
+import { StringToken, Token, SyntaxKind, StringTokenKind } from 'squirrel';
 import { Position, Range, Selection, TextDocument, window } from 'vscode';
 
 function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
 	return new Range(document.positionAt(start), document.positionAt(end));
 }
 
-function getQuote(document: TextDocument, token: StringToken<String>): string {
+function getQuote(document: TextDocument, token: StringToken<StringTokenKind>): string {
 	return document.getText(convertOffsetsToRange(document, token.start, token.sourcePositions[0]));
 }
 
