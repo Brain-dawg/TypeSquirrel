@@ -1285,13 +1285,16 @@ const forEachChildTable: ForEachChildTable = {
 		callback(node.expression);
 		callback(node.caseBlock);
 	},
-	[SyntaxKind.TryStatement]: function(node: TryStatement, callback: (childNode: Node) => void): void {
-		callback(node.tryStatement);
-		callback(node.catchClause);
+	[SyntaxKind.CaseBlock]: function(node: CaseBlock, callback: (childNode: Node) => void): void {
+		callback(node.clauses);
 	},
 	[SyntaxKind.CatchClause]: function(node: CatchClause, callback: (childNode: Node) => void): void {
 		callback(node.variable);
 		callback(node.statement);
+	},
+	[SyntaxKind.TryStatement]: function(node: TryStatement, callback: (childNode: Node) => void): void {
+		callback(node.tryStatement);
+		callback(node.catchClause);
 	},
 	[SyntaxKind.FunctionDeclaration]: functionLike,
 	[SyntaxKind.LocalFunctionDeclaration]: functionLike,
