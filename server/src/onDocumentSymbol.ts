@@ -22,46 +22,35 @@ export default async function onDocumentSymbolHandler(params: DocumentSymbolPara
 		return null;
 	}
 
-	const root = info.sourceFile.locals;
+	const root = info.sourceFile.outline;
 	if (!root) {
 		return null;
 	}
 	
-	return symbolTableToDocumentSymbols(document, root);
+	return convertSymbolsToDocumentSymbols(document, root);
 }
 
 
-function symbolTableToDocumentSymbols(document: TextDocument, table: SymbolTable): DocumentSymbol[] {
+function convertSymbolsToDocumentSymbols(document: TextDocument, outline: Symbol[]): DocumentSymbol[] {
 	const result: DocumentSymbol[] = [];
 
-	table.forEach((symbols: Symbol[]) => {
-		for (const sym of symbols) {
-			if (sym.flags & SymbolFlags.FunctionScopedVariable) {
-				continue;
-			}
-
-			const range = convertOffsetsToRange(document, sym.declaration.start, sym.declaration.end);
-
-			const children = [];
-			const locals = (sym.declaration as LocalsContainer).locals;
-			if (sym.members) {
-				children.push(...symbolTableToDocumentSymbols(document, sym.members));
-			}
-			if (locals) {
-				children.push(...symbolTableToDocumentSymbols(document, locals));
-			}
-
-			const docSym: DocumentSymbol = {
-				name: sym.name,
-				kind: symbolFlagsToKind(sym.flags),
-				range,
-				selectionRange: range,
-				children
-			};
-
-			result.push(docSym);
+	for (const symbol of outline) {
+		if (symbol.flags & SymbolFlags.FunctionScopedVariable) {
+			continue;
 		}
-	});
+
+		const range = convertOffsetsToRange(document, symbol.declaration.start, symbol.declaration.end);
+
+		const documentSymbol: DocumentSymbol = {
+			name: symbol.name,
+			kind: symbolFlagsToKind(symbol.flags),
+			range,
+			selectionRange: range,
+			children: symbol.outline ? convertSymbolsToDocumentSymbols(document, symbol.outline) : undefined 
+		};
+
+		result.push(documentSymbol);
+	}
 
 	return result;
 }

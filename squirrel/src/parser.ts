@@ -680,7 +680,7 @@ export class Parser {
 		const start = this.token.start;
 		let expr = this.parseBinaryExpressionOrHigher(OperatorPrecedence.Lowest, message);
 		if (isAssignmentOperator(this.token)) {
-			if (!isValidSlotExpression(expr.kind)) {
+			if (!isValidSlotExpression(expr)) {
 				this.diagnostic("The left-hand side of an assignment expression must be a variable or a property access.", expr.start, expr.end);
 			}
 			
@@ -835,7 +835,7 @@ export class Parser {
 		this.next();
 
 		const operand = this.parseUnaryExpressionOrHigher();
-		if (!isValidSlotExpression(operand.kind)) {
+		if (!isValidSlotExpression(operand)) {
 			this.diagnostic("The operand of an increment or decrement operator must be a variable or a property access.", operand.start, operand.end);
 		}
 		const end = this.lexer.lastToken.end;
@@ -850,7 +850,7 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.DeleteKeyword);
 		const expression = this.parseUnaryExpressionOrHigher();
-		if (!isValidSlotExpression(expression.kind)) {
+		if (!isValidSlotExpression(expression)) {
 			this.diagnostic("The right-hand side of a delete expression must be a variable or a property access.", expression.start, expression.end);
 		}
 
@@ -1089,7 +1089,7 @@ export class Parser {
 
 		const operator = this.token.kind as PostfixUnaryOperator;
 		this.next();
-		if (!isValidSlotExpression(operand.kind)) {
+		if (!isValidSlotExpression(operand)) {
 			this.diagnostic("The operand of an increment or decrement operator must be a variable or a property access.", operand.start, operand.end);
 		}
 
@@ -1523,7 +1523,7 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.ClassKeyword);
 		const expression = this.parseUnaryExpressionOrHigher();
-		if (!isValidSlotExpression(expression.kind)) {
+		if (!isValidSlotExpression(expression)) {
 			this.diagnostic("The class name must be a variable or a property access.", expression.start, expression.end);
 		}
 		const name: Identifier | ComputedName = expression.kind === SyntaxKind.Identifier ?

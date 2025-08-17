@@ -547,6 +547,8 @@ export interface Symbol {
 	name: string;
 	declaration: Declaration;
 	members?: SymbolTable;
+	// Used for document symbol provider
+	outline?: Symbol[];
 }
 
 export interface LocalsContainer extends Node {
@@ -575,7 +577,7 @@ export interface Declaration extends Node {
 }
 
 export interface NamedDeclaration extends Declaration {
-	readonly name: Name;
+	readonly name?: Name;
 }
 
 
@@ -592,6 +594,8 @@ export interface NodeArray<T extends Node> extends Node {
 export interface SourceFile extends Node, LocalsContainer {
 	readonly kind: SyntaxKind.SourceFile;
 	readonly statements: NodeArray<Statement>;
+	// Used for document symbol provider
+	outline?: Symbol[];
 }
 
 
@@ -851,6 +855,7 @@ export interface ConstructorDeclarationBase extends StatementFunctionBase {
 
 export interface PropertyAssignmentBase extends NamedDeclaration {
 	readonly kind: SyntaxKind.ClassPropertyAssignment | SyntaxKind.TablePropertyAssignment | SyntaxKind.EnumMember | SyntaxKind.PostCallInitialiserPropertyAssignment;
+	readonly name: Name;
 	readonly initialiser?: Expression;
 }
 
@@ -916,7 +921,7 @@ export interface VerbatimStringLiteral extends LiteralExpression {
 	readonly kind: SyntaxKind.VerbatimStringLiteral;
 }
 
-export interface Identifier extends LiteralExpression {
+export interface Identifier extends NamedDeclaration, LiteralExpression {
 	readonly kind: SyntaxKind.Identifier;
 }
 
@@ -1093,7 +1098,8 @@ export interface PrefixUnaryExpression extends UnaryExpression {
 	readonly operand: UnaryExpression;
 }
 
-export interface BinaryExpression extends Expression {
+// Extends named declaration due to the `<-` having the ability to define new symbols
+export interface BinaryExpression extends NamedDeclaration, Expression {
 	readonly kind: SyntaxKind.BinaryExpression;
 	readonly left: Expression;
 	readonly operator: BinaryOperator;
@@ -1158,13 +1164,12 @@ export interface TableConstructor extends ConstructorDeclarationBase {
 	parent?: TableLiteralExpression;
 }
 
-export function isValidSlotExpression(kind: SyntaxKind) {
-	switch (kind) {
+export function isValidSlotExpression(expr: Expression): expr is Name {
+	switch (expr.kind) {
 	case SyntaxKind.PropertyAccessExpression:
 	case SyntaxKind.ElementAccessExpression:
 	case SyntaxKind.RootAccessExpression:
 	case SyntaxKind.Identifier:
-	case SyntaxKind.ConstructorKeyword:
 		return true;
 	default:
 		return false;

@@ -1,5 +1,5 @@
 import { isMissingNode } from "./parser";
-import { Node, SyntaxKind, Symbol, SymbolFlags, SymbolTable, Declaration, SourceFile, VariableDeclaration, FunctionDeclaration, LocalFunctionDeclaration, ClassDeclaration, ClassPropertyAssignment, ClassMethod, ClassConstructor, EnumDeclaration, EnumMember, ConstStatement, PropertyAccessExpression, ElementAccessExpression, LocalsContainer, forEachChild, TablePropertyAssignment, TableMethod, ParameterDeclaration, TableConstructor, TableLiteralExpression, ClassExpression, FunctionExpression, LambdaExpression, PrimaryExpression, RootAccessExpression, StringLiteral, VerbatimStringLiteral, Name } from "./types";
+import { Node, SyntaxKind, Symbol, SymbolFlags, SymbolTable, Declaration, SourceFile, VariableDeclaration, FunctionDeclaration, LocalFunctionDeclaration, ClassDeclaration, ClassPropertyAssignment, ClassMethod, ClassConstructor, EnumDeclaration, EnumMember, ConstStatement, PropertyAccessExpression, ElementAccessExpression, LocalsContainer, forEachChild, TablePropertyAssignment, TableMethod, ParameterDeclaration, TableConstructor, TableLiteralExpression, ClassExpression, FunctionExpression, LambdaExpression, PrimaryExpression, RootAccessExpression, StringLiteral, VerbatimStringLiteral, Name, BinaryExpression, isValidSlotExpression, Expression, LiteralExpression, Identifier } from "./types";
 
 export const enum ContainerFlags {
 	None = 0,
@@ -15,7 +15,9 @@ export const enum MissingSymbolName {
 	Table = "<table>",
 	Property = "<property>",
 	Method = "<method>",
-	EnumMember = "<enum member>"
+	EnumMember = "<enum member>",
+	Variable = "<variable>",
+	Parameter = "<parameter>"
 }
 
 
@@ -32,49 +34,64 @@ function appendOrCreateArrayValue<T, V>(map: Map<T, V[]>, key: T, value: V) {
 	}
 }
 
+function extractName(name: Name): string | undefined {
+	if (name.kind !== SyntaxKind.ComputedName) {
+		return !isMissingNode(name) ? name.value : undefined;
+	}
+	
+	return nameFromExpression(name.expression);
+}
+
+function nameFromExpression(expression: Expression): string | undefined {
+	switch (expression.kind) {
+	case SyntaxKind.Identifier: {
+		const name = expression as Identifier;
+		return !isMissingNode(name) ? name.value : undefined;
+	}
+	case SyntaxKind.RootAccessExpression: {
+		const name = (expression as RootAccessExpression).name;
+		return !isMissingNode(name) ? name.value : undefined;
+	}
+	case SyntaxKind.PropertyAccessExpression: {
+		const name = (expression as PropertyAccessExpression).property;
+		return !isMissingNode(name) ? name.value : undefined;
+	}
+	case SyntaxKind.ElementAccessExpression:
+		const name = (expression as ElementAccessExpression).argumentExpression;
+		if (isMissingNode(name) ||
+			name.kind !== SyntaxKind.StringLiteral && name.kind !== SyntaxKind.VerbatimStringLiteral &&
+			name.kind !== SyntaxKind.IntegerLiteral && name.kind !== SyntaxKind.FloatLiteral
+		) {
+			return undefined;
+		}
+
+		return (name as LiteralExpression).value || undefined;
+	default:
+		return undefined;
+	}
+}
+
 export class Binder {
 	private container: SymbolTable;
 	private blockScopeContainer: SymbolTable;
+	private outline: Symbol[];
 	private symbolCount = 0;
 
 	constructor() {
 		this.container = undefined!;
 		this.blockScopeContainer = undefined!;
+		this.outline = undefined!;
 	}
 
 	public bindSourceFile(file: SourceFile): void {
 		file.locals = createSymbolTable();
+		file.outline = [];
 
 		this.container = file.locals;
 		this.blockScopeContainer = file.locals;
+		this.outline = file.outline;
 
 		this.bind(file);
-	}
-
-	private extractName(name: Name): string | undefined {
-		if (name.kind !== SyntaxKind.ComputedName) {
-			return !isMissingNode(name) ? name.value : undefined;
-		}
-		const expr = name.expression;
-		switch (expr.kind) {
-		case SyntaxKind.RootAccessExpression: {
-			const name = (expr as RootAccessExpression).name;
-			return !isMissingNode(name) ? name.value : undefined;
-		}
-		case SyntaxKind.PropertyAccessExpression: {
-			const name = (expr as PropertyAccessExpression).property;
-			return !isMissingNode(name) ? name.value : undefined;
-		}
-		case SyntaxKind.ElementAccessExpression:
-			const name = (expr as ElementAccessExpression).argumentExpression;
-			if (isMissingNode(name) || name.kind !== SyntaxKind.StringLiteral && name.kind !== SyntaxKind.VerbatimStringLiteral) {
-				return undefined;
-			}
-
-			return (name as StringLiteral | VerbatimStringLiteral).value || undefined;
-		default:
-			return undefined;
-		}
 	}
 
 	private createSymbol(node: Declaration, name: string, flags: SymbolFlags) {
@@ -88,6 +105,8 @@ export class Binder {
 
 		node.symbol = symbol;
 		appendOrCreateArrayValue(flags & SymbolFlags.Variable ? this.blockScopeContainer : this.container, symbol.name, symbol);
+
+		this.outline.push(symbol);
 	}
 
 	private bind(node?: Node): void {
@@ -110,13 +129,20 @@ export class Binder {
 	private bindContainer(node: Node, containerFlags: ContainerFlags): void {
 		const saveContainer = this.container;
 		const saveBlockScopeContainer = this.blockScopeContainer;
+		const saveOutline = this.outline;
 
 		// if (containerFlags & (ContainerFlags.IsContainer | ContainerFlags.IsBlockScopedContainer)) {
+		const symbol = (node as Declaration).symbol;
+		if (symbol) {
+			symbol.outline = [];
+			this.outline = symbol.outline;
+		}
+
 		let container: SymbolTable;
 		if (containerFlags & ContainerFlags.HasLocals) {
 			(node as LocalsContainer).locals = container = createSymbolTable();
 		} else {
-			(node as Declaration).symbol!.members = container = createSymbolTable();
+			symbol!.members = container = createSymbolTable();
 		}
 
 		
@@ -130,6 +156,7 @@ export class Binder {
 
 		this.container = saveContainer;
 		this.blockScopeContainer = saveBlockScopeContainer;
+		this.outline = saveOutline;
 	}
 
 	private bindChildren(node: Node): void {
@@ -184,40 +211,46 @@ export class Binder {
 		case SyntaxKind.LambdaExpression:
 			this.bindAnonymousProperty(node as FunctionExpression | LambdaExpression, MissingSymbolName.Function, SymbolFlags.Function);
 			break;
+		case SyntaxKind.BinaryExpression:
+			if ((node as BinaryExpression).operator === SyntaxKind.LessMinusToken) {
+				this.bindNewSlot(node as BinaryExpression);
+			}
+			break;
 		}
 	}
 
 	private bindVariableDeclaration(node: VariableDeclaration): void {
-		this.createSymbol(node, node.name.value, SymbolFlags.BlockScopedVariable);
+		this.createSymbol(node, !isMissingNode(node.name) ? node.name.value : MissingSymbolName.Variable, SymbolFlags.BlockScopedVariable);
 	}
 
 	private bindParameterDeclaration(node: ParameterDeclaration): void {
-		this.createSymbol(node, node.name.value, SymbolFlags.FunctionScopedVariable);
+		this.createSymbol(node, !isMissingNode(node.name) ? node.name.value : MissingSymbolName.Parameter, SymbolFlags.FunctionScopedVariable);
 	}
 
 	private bindConstStatement(node: ConstStatement): void {
-		this.createSymbol(node, node.name.value, SymbolFlags.Global);
+		this.createSymbol(node, !isMissingNode(node.name) ? node.name.value : MissingSymbolName.Variable, SymbolFlags.Global);
 	}
 
 	private bindLocalFunctionDeclaration(node: LocalFunctionDeclaration): void {
-		this.createSymbol(node, node.name.value, SymbolFlags.BlockScopedVariable | SymbolFlags.Function);
+		this.createSymbol(node, !isMissingNode(node.name) ? node.name.value : MissingSymbolName.Function, SymbolFlags.BlockScopedVariable | SymbolFlags.Function);
 	}
 
 	private bindFunctionDeclaration(node: FunctionDeclaration): void {
-		this.createSymbol(node, this.extractName(node.name) ?? MissingSymbolName.Function, SymbolFlags.Function);
+		// We want to use || instead of ?? for a fallback to also account for empty strings
+		this.createSymbol(node, extractName(node.name) || MissingSymbolName.Function, SymbolFlags.Function);
 	}
 
 
 	private bindClassDeclaration(node: ClassDeclaration): void {
-		this.createSymbol(node, this.extractName(node.name) ?? MissingSymbolName.Class, SymbolFlags.Class);
+		this.createSymbol(node, extractName(node.name) || MissingSymbolName.Class, SymbolFlags.Class);
 	}
 	
 	private bindProperty(node: ClassPropertyAssignment | TablePropertyAssignment): void {
-		this.createSymbol(node, this.extractName(node.name) ?? MissingSymbolName.Property, SymbolFlags.Property);
+		this.createSymbol(node, extractName(node.name) || MissingSymbolName.Property, SymbolFlags.Property);
 	}
 
 	private bindMethod(node: ClassMethod | TableMethod): void {
-		this.createSymbol(node, this.extractName(node.name) ?? MissingSymbolName.Method, SymbolFlags.Method);
+		this.createSymbol(node, extractName(node.name) || MissingSymbolName.Method, SymbolFlags.Method);
 	}
 
 	private bindConstructor(node: ClassConstructor | TableConstructor): void {
@@ -230,22 +263,40 @@ export class Binder {
 	}
 
 	private bindEnumMember(node: EnumMember): void {
-		this.createSymbol(node, this.extractName(node.name) ?? MissingSymbolName.EnumMember, SymbolFlags.EnumMember);
+		this.createSymbol(node, extractName(node.name) || MissingSymbolName.EnumMember, SymbolFlags.EnumMember);
 	}
 
 	private bindAnonymousProperty(node: Declaration, name: string, flags: SymbolFlags) {
-		const parent = node.parent!;
-		switch (parent.kind) {
-		case SyntaxKind.VariableDeclaration:
-		case SyntaxKind.ParameterDeclaration:
-		case SyntaxKind.ClassPropertyAssignment:
-		case SyntaxKind.TablePropertyAssignment:
-		case SyntaxKind.PostCallInitialiserPropertyAssignment:
-			node.symbol = (parent as Declaration).symbol;
-			return;
-		default:
-			this.createSymbol(node, name, flags);
+		const parent = node.parent;
+		if (parent) {
+			switch (parent.kind) {
+			case SyntaxKind.BinaryExpression:
+				const expr = parent as BinaryExpression;
+				if (expr.operator !== SyntaxKind.LessMinusToken) {
+					break;
+				}
+
+				const symbol = expr.symbol;
+				if (!symbol) {
+					break;
+				}
+
+				node.symbol = symbol;
+				return;
+			case SyntaxKind.VariableDeclaration:
+			case SyntaxKind.ParameterDeclaration:
+			case SyntaxKind.ClassPropertyAssignment:
+			case SyntaxKind.TablePropertyAssignment:
+			case SyntaxKind.PostCallInitialiserPropertyAssignment:
+				node.symbol = (parent as Declaration).symbol;
+				return;
+			}
 		}
+		this.createSymbol(node, name, flags);
+	}
+
+	private bindNewSlot(node: BinaryExpression): void {
+		this.createSymbol(node, nameFromExpression(node.left) || MissingSymbolName.Variable, SymbolFlags.Global);
 	}
 
 	private getContainerFlags(node: Node): ContainerFlags {
