@@ -44,8 +44,12 @@ function extractName(name: Name): string | undefined {
 
 function nameFromExpression(expression: Expression): string | undefined {
 	switch (expression.kind) {
-	case SyntaxKind.Identifier: {
-		const name = expression as Identifier;
+	case SyntaxKind.Identifier:
+	case SyntaxKind.StringLiteral:
+	case SyntaxKind.VerbatimStringLiteral:
+	case SyntaxKind.IntegerLiteral:
+	case SyntaxKind.FloatLiteral: {
+		const name = expression as LiteralExpression;
 		return !isMissingNode(name) ? name.value : undefined;
 	}
 	case SyntaxKind.RootAccessExpression: {
