@@ -1263,6 +1263,7 @@ export class Parser {
 		this.parseExpected(SyntaxKind.WhileKeyword);
 		this.parseExpected(SyntaxKind.OpenParenthesisToken);
 		const expression = this.parseCommaExpression();
+		this.parseExpected(SyntaxKind.CloseParenthesisToken);
 
 		const end = this.lexer.lastToken.end;
 		const node: DoStatement = { kind: SyntaxKind.DoStatement, start, end, statement, expression };
