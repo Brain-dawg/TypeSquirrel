@@ -1,7 +1,7 @@
 import { DocumentSymbol, DocumentSymbolParams, Range, SymbolKind } from "vscode-languageserver";
 import { documentInfo, documents } from "./server";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { LocalsContainer, Symbol, SymbolFlags, SymbolTable } from "squirrel";
+import { Symbol, SymbolFlags } from "squirrel";
 
 function convertOffsetsToRange(document: TextDocument, start: number, end: number): Range {
 	return {
@@ -35,10 +35,6 @@ function convertSymbolsToDocumentSymbols(document: TextDocument, outline: Symbol
 	const result: DocumentSymbol[] = [];
 
 	for (const symbol of outline) {
-		if (symbol.flags & SymbolFlags.FunctionScopedVariable) {
-			continue;
-		}
-
 		const range = convertOffsetsToRange(document, symbol.declaration.start, symbol.declaration.end);
 
 		const documentSymbol: DocumentSymbol = {
@@ -56,8 +52,12 @@ function convertSymbolsToDocumentSymbols(document: TextDocument, outline: Symbol
 }
 
 function symbolFlagsToKind(flags: SymbolFlags): SymbolKind {
-	if (flags & (SymbolFlags.Function | SymbolFlags.Method | SymbolFlags.Constructor)) {
+	if (flags & SymbolFlags.Function) {
 		return SymbolKind.Function;
+	} else if (flags & SymbolFlags.Method) {
+		return SymbolKind.Method;
+	} else if (flags & SymbolFlags.Constructor) {
+		return SymbolKind.Constructor;
 	} else if (flags & SymbolFlags.Class) {
 		return SymbolKind.Class;
 	} else if (flags & SymbolFlags.Property) {
@@ -66,6 +66,8 @@ function symbolFlagsToKind(flags: SymbolFlags): SymbolKind {
 		return SymbolKind.Enum;
 	} else if (flags & SymbolFlags.EnumMember) {
 		return SymbolKind.EnumMember;
+	} else if (flags & SymbolFlags.Global) {
+		return SymbolKind.Field;
 	}
 
 	return SymbolKind.Variable;

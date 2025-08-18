@@ -1,5 +1,5 @@
 import { isMissingNode } from "./parser";
-import { Node, SyntaxKind, Symbol, SymbolFlags, SymbolTable, Declaration, SourceFile, VariableDeclaration, FunctionDeclaration, LocalFunctionDeclaration, ClassDeclaration, ClassPropertyAssignment, ClassMethod, ClassConstructor, EnumDeclaration, EnumMember, ConstStatement, PropertyAccessExpression, ElementAccessExpression, LocalsContainer, forEachChild, TablePropertyAssignment, TableMethod, ParameterDeclaration, TableConstructor, TableLiteralExpression, ClassExpression, FunctionExpression, LambdaExpression, PrimaryExpression, RootAccessExpression, StringLiteral, VerbatimStringLiteral, Name, BinaryExpression, isValidSlotExpression, Expression, LiteralExpression, Identifier } from "./types";
+import { Node, SyntaxKind, Symbol, SymbolFlags, SymbolTable, Declaration, SourceFile, VariableDeclaration, FunctionDeclaration, LocalFunctionDeclaration, ClassDeclaration, ClassPropertyAssignment, ClassMethod, ClassConstructor, EnumDeclaration, EnumMember, ConstStatement, PropertyAccessExpression, ElementAccessExpression, LocalsContainer, forEachChild, TablePropertyAssignment, TableMethod, ParameterDeclaration, TableConstructor, TableLiteralExpression, ClassExpression, FunctionExpression, LambdaExpression, RootAccessExpression, Name, BinaryExpression, Expression, LiteralExpression } from "./types";
 
 export const enum ContainerFlags {
 	None = 0,
@@ -110,7 +110,10 @@ export class Binder {
 		node.symbol = symbol;
 		appendOrCreateArrayValue(flags & SymbolFlags.Variable ? this.blockScopeContainer : this.container, symbol.name, symbol);
 
-		this.outline.push(symbol);
+		// Don't show function parameters in the outline
+		if (!(symbol.flags & SymbolFlags.FunctionScopedVariable)) {
+			this.outline.push(symbol);
+		}
 	}
 
 	private bind(node?: Node): void {
