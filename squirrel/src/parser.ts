@@ -1,5 +1,5 @@
 import { Lexer } from "./lexer";
-import { Node, SyntaxKind, NodeArray, forEachChild, Token, VScriptDiagnostic, DiagnosticSeverity, Identifier, TokenToString, isTokenAValidIdentifier, isTokenAKeyword, Expression, PrefixUnaryExpression, VariableDeclaration, Parameter, VariedArgs, Name, isTokenAString, Statement, BinaryOperator, BinaryExpression, OperatorPrecedence, isAssignmentOperator, getBinaryOperatorPrecedence, PrimaryExpression, ConditionalExpression, PrefixUnaryOperator, DeleteExpression, TypeOfExpression, ResumeExpression, CloneExpression, RawCallExpression, RootAccessExpression, LiteralExpression, TokenToExpression, ParenthesisedExpression, ArrayLiteralExpression, TableLiteralExpression, TableLiteralMember, TableMethod, TableConstructor, TablePropertyAssignment, FunctionExpression, LambdaExpression, ClassExpression, PostfixUnaryExpression, PostfixUnaryOperator, PropertyAccessExpression, ElementAccessExpression, CallExpression, EmptyStatement, BlockStatement, IfStatement, WhileStatement, DoStatement, ForStatement, LocalStatement, ForEachStatement, SwitchStatement, CaseBlock, CaseClause, DefaultClause, LocalFunctionDeclaration, ConstStatement, ReturnStatement, YieldStatement, ContinueStatement, BreakStatement, FunctionDeclaration, ClassDeclaration, ClassMember, ClassMethod, ClassConstructor, ClassPropertyAssignment, EnumDeclaration, EnumMember, TryStatement, CatchClause, ThrowStatement, ExpressionStatement, SourceFile, isValidSlotExpression, ForInitialiser, ParameterDeclaration, StringLiteral, VerbatimStringLiteral, ComputedName, PostCallInitialiser, PostCallInitialiserPropertyAssignment } from "./types";
+import { Node, SyntaxKind, NodeArray, forEachChild, Token, VScriptDiagnostic, DiagnosticSeverity, Identifier, TokenToString, isTokenAValidIdentifier, isTokenAKeyword, Expression, PrefixUnaryExpression, VariableDeclaration, Parameter, VariedArgs, Name, isTokenAString, Statement, BinaryOperator, BinaryExpression, OperatorPrecedence, isAssignmentOperator, getBinaryOperatorPrecedence, PrimaryExpression, ConditionalExpression, PrefixUnaryOperator, DeleteExpression, TypeOfExpression, ResumeExpression, CloneExpression, RawCallExpression, RootAccessExpression, LiteralExpression, TokenToExpression, ParenthesisedExpression, ArrayLiteralExpression, TableLiteralExpression, TableLiteralMember, TableMethod, TableConstructor, TablePropertyAssignment, FunctionExpression, LambdaExpression, ClassExpression, PostfixUnaryExpression, PostfixUnaryOperator, PropertyAccessExpression, ElementAccessExpression, CallExpression, EmptyStatement, BlockStatement, IfStatement, WhileStatement, DoStatement, ForStatement, LocalStatement, ForEachStatement, SwitchStatement, CaseBlock, CaseClause, DefaultClause, LocalFunctionDeclaration, ConstStatement, ReturnStatement, YieldStatement, ContinueStatement, BreakStatement, FunctionDeclaration, ClassDeclaration, ClassMember, ClassMethod, ClassConstructor, ClassPropertyAssignment, EnumDeclaration, EnumMember, TryStatement, CatchClause, ThrowStatement, ExpressionStatement, SourceFile, isValidSlotExpression, ForInitialiser, ParameterDeclaration, StringLiteral, VerbatimStringLiteral, ComputedName, PostCallInitialiser, PostCallInitialiserPropertyAssignment, Mutable } from "./types";
 
 
 const enum ParsingContext {
@@ -437,7 +437,9 @@ export class Parser {
 			return true;
 		}
 		switch (parsingContext) {
+		/*
 		case ParsingContext.SourceElements:
+			return kind === SyntaxKind.EndOfFileToken;*/
 		case ParsingContext.BlockStatements:
 		case ParsingContext.SwitchClauses:
 		case ParsingContext.ClassMembers:
@@ -590,18 +592,32 @@ export class Parser {
 	private abortParsingListOrMoveToNextToken(context: ParsingContext): boolean {
 		this.parsingContextErrors(context);
 
+		// If we're in error recovery, then we don't want to treat ';' as an empty statement.
+		// The problem is that ';' can show up in far too many contexts, and if we see one
+		// and assume it's a statement, then we may bail out inappropriately from whatever
+		// we're parsing.  For example, if we have a semicolon in the middle of a class, then
+		// we really don't want to assume the class is over and we're on a statement in the
+		// outer module.  We just want to consume and move on.
+		if (this.token.kind === SyntaxKind.SemicolonToken) {
+			this.next();
+			return false;
+		}
+
+		// Hack: if the user tries to write new statements on top, but it's not preceded by 'case' or
+		// 'default' the whole parsing breaks and we get errors everywhere in the switch statement.
+		// Instead we assume that the user has skipped writing 'default' keyword on top. 
+		// In this case only the first statement has error and everything below works fine
+		if (context === ParsingContext.SwitchClauses && this.isStartOfStatement()) {
+			(this.token as Mutable<Token<SyntaxKind>>).kind = SyntaxKind.DefaultKeyword;
+			return false;
+		}
+
 		for (let flag: ParsingContext = 1; flag < ParsingContext.Count; flag <<= 1) {
 			if (!(this.parsingContext & flag)) {
 				continue;
 			}
 
-			// If we're in error recovery, then we don't want to treat ';' as an empty statement.
-			// The problem is that ';' can show up in far too many contexts, and if we see one
-			// and assume it's a statement, then we may bail out inappropriately from whatever
-			// we're parsing.  For example, if we have a semicolon in the middle of a class, then
-			// we really don't want to assume the class is over and we're on a statement in the
-			// outer module.  We just want to consume and move on.
-			if ((this.token.kind !== SyntaxKind.SemicolonToken && this.isListElement(flag)) || this.isListTerminator(flag)) {
+			if (this.isListElement(flag) || this.isListTerminator(flag)) {
 				return true;
 			}
 		}
