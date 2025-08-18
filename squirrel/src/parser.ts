@@ -782,6 +782,9 @@ export class Parser {
 			switch (this.token.kind) {
 			case SyntaxKind.PlusPlusToken:
 			case SyntaxKind.MinusMinusToken:
+				if (this.canParseEndOfStatement()) {
+					return expression;
+				}
 				return this.parsePostfixUpdateExpression(expression);
 			case SyntaxKind.DotToken:
 				expression = this.parsePropertyAccessExpression(expression);
