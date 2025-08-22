@@ -1480,11 +1480,23 @@
 		"class-declarations": {
 			"patterns": [
 				{
-					"match": "(?<![_A-Za-z])(?:([_A-Za-z]\\w*)\\s*(=|<-)\\s*)?(class)(?:(?!\\s+[_A-Za-z])|\\s+(extends)(?:\\s+|\\s*(::)\\s*)((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*))\\b",
+					"match": "(?<![_A-Za-z])extends\\b",
+					"name": "storage.modifier.extends.squirrel"
+				},
+				{
+					"match": "(?<![_A-Za-z])(?<=(class)\\s.*?)([_A-Za-z]\\w*)\\s*(?=\\sextends|\\{)",
 					"captures": {
-						"0": {
-							"name": "meta.class.squirrel"
+						"1": {
+							"name": "storage.type.class.squirrel"
 						},
+						"2": {
+							"name": "entity.name.type.class.squirrel"
+						}
+					}
+				},
+				{
+					"match": "(?<![_A-Za-z])(?:([_A-Za-z]\\w*)\\s*(=|<-)\\s*)?(class)\\b",
+					"captures": {
 						"1": {
 							"name": "entity.name.type.class.squirrel"
 						},
@@ -1493,81 +1505,12 @@
 						},
 						"3": {
 							"name": "storage.type.class.squirrel"
-						},
-						"4": {
-							"name": "storage.modifier.extends.squirrel"
-						},
-						"5": {
-							"name": "storage.modifier.global.squirrel"
-						},
-						"6": {
-							"patterns": [
-								{
-									"name": "punctuation.accessor.squirrel",
-									"match": "\\."
-								},
-								{
-									"include": "#identifiers"
-								}
-							]
-						},
-						"7": {
-							"name": "entity.other.inherited-class.squirrel"
-						}
-					}
-				},
-				{
-					"match": "(?<![_A-Za-z])(class)(?:\\s+|\\s*(::)\\s*)((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*)(?:\\s+(extends)(?:\\s+|\\s*(::)\\s*)((?:[_A-Za-z]\\w*\\.)*)([_A-Za-z]\\w*))?\\b",
-					"captures": {
-						"1": {
-							"name": "storage.type.class.squirrel"
-						},
-						"2": {
-							"name": "storage.modifier.global.squirrel"
-						},
-						"3": {
-							"patterns": [
-								{
-									"name": "punctuation.accessor.squirrel",
-									"match": "\\."
-								},
-								{
-									"include": "#identifiers"
-								}
-							]
-						},
-						"4": {
-							"name": "entity.name.type.class.squirrel"
-						},
-						"5": {
-							"name": "storage.modifier.extends.squirrel"
-						},
-						"6": {
-							"name": "storage.modifier.global.squirrel"
-						},
-						"7": {
-							"patterns": [
-								{
-									"name": "punctuation.accessor.squirrel",
-									"match": "\\."
-								},
-								{
-									"include": "#identifiers"
-								}
-							]
-						},
-						"8": {
-							"name": "entity.other.inherited-class.squirrel"
 						}
 					}
 				},
 				{
 					"match": "(?<![_A-Za-z])class\\b",
 					"name": "storage.type.class.squirrel"
-				},
-				{
-					"match": "(?<![_A-Za-z])extends\\b",
-					"name": "storage.modifier.extends.squirrel"
 				},
 				{
 					"match": "(?<![_A-Za-z])(Vector|QAngle|Vector2D|Vector4D|Quaternion|Convars|Entities|EntityOutputs|NavMesh|NetProps|PlayerVoiceListener|CBaseEntity|CBaseAnimating|CBaseCombatWeapon|CBaseFlex|CBaseCombatCharacter|CBasePlayer|CBaseMultiplayerPlayer|CEconEntity|CTFPlayer|CTFBot|CTFBaseBoss|CEntities|CTFNavArea|CNavMesh|CNetPropManager|CScriptEntityOutputs|CScriptKeyValues|CPlayerVoiceListener|CEnvEntityMaker|CPointTemplate|CFuncTrackTrain|CPointScriptTemplate|CSceneEntity|CCallChainer|CSimpleCallChainer|NextBotCombatCharacter|INextBotComponent|ILocomotion|LateBinder|regexp)\\b(?!\\s*(?:=|<-))",
@@ -1600,16 +1543,15 @@
 		"functions": {
 			"patterns": [
 				{
-					"name": "storage.type.function.squirrel",
-					"match": "(?<![_A-Za-z])function\\b|@"
-				},
-				{
-					"match": "(?<=[^_A-Za-z]function\\s*)\\b((?:[_A-Za-z]\\w*::)*)([_A-Za-z]\\w*)\\b",
+					"match": "(?<![_A-Za-z])(function)\\s+((?:[_A-Za-z]\\w*::)*)([_A-Za-z]\\w*)\\b",
 					"captures": {
 						"1": {
+							"name": "storage.type.function.squirrel"
+						},
+						"2": {
 							"patterns": [
 								{
-									"name": "storage.modifier.global.squirrel",
+									"name": "punctuation.separator.namespace.access.squirrel",
 									"match": "::"
 								},
 								{
@@ -1617,10 +1559,14 @@
 								}
 							]
 						},
-						"2": {
+						"3": {
 							"name": "entity.name.function.squirrel"
 						}
 					}
+				},
+				{
+					"name": "storage.type.function.squirrel",
+					"match": "(?<![_A-Za-z])function\\b|@"
 				},
 				{
 					"name": "entity.name.function.squirrel",
@@ -1717,6 +1663,9 @@
 				{
 					"name": "punctuation.terminator.squirrel",
 					"match": ";"
+				},
+				{
+					"match": "::"
 				},
 				{
 					"name": "punctuation.colon.squirrel",
