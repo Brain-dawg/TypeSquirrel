@@ -5,7 +5,7 @@
 # pylint: disable=broad-exception-caught
 """
 Usage:
-    python squirrel_analyzer.py [options] <file.nut>
+    python squirrel_analyzer.py [options] <file.tnut>
 """
 
 import argparse
@@ -37,10 +37,10 @@ from squirrel_types import *
 HELP_TEXT = """
 
     Examples:
-    python squirrel_analyzer.py script.nut                    # Type check only
-    python squirrel_analyzer.py --strip script.nut           # Strip annotations
-    python squirrel_analyzer.py --check --strip script.nut   # Both operations
-    python squirrel_analyzer.py --output clean.nut script.nut # Save stripped version
+    python squirrel_analyzer.py script.tnut                    # Type check only
+    python squirrel_analyzer.py --strip script.tnut           # Strip annotations
+    python squirrel_analyzer.py --check --strip script.tnut   # Both operations
+    python squirrel_analyzer.py --output clean.tnut script.tnut # Save stripped version
 """
 
 
@@ -460,11 +460,11 @@ def main():
 
     parser.add_argument( "file", help="Squirrel source file to analyze" )
     parser.add_argument( "--check", "-c", action="store_true", default=True, help="Perform type checking (default: True)" )
-    parser.add_argument( "--no-check", action="store_false", dest="check", help="Skip type checking" )
+    parser.add_argument( "--no-check", "-nc", action="store_false", dest="check", help="Skip type checking" )
     parser.add_argument( "--strip", "-s", action="store_true", help="Strip type annotations" )
     parser.add_argument( "--output", "-o", help="Output file for stripped code" )
-    parser.add_argument( "--format", choices=["text", "json"], default="text", help="Output format for messages" )
-    parser.add_argument( "--verbose", "-v", action="store_true", help="Verbose output" )
+    parser.add_argument( "--format", "-fmt", choices=["text", "json"], default="text", help="Output format for messages" )
+    parser.add_argument( "--verbose", "-v", action="store_true", default=False, help="Verbose output" )
 
     args = parser.parse_args()
 

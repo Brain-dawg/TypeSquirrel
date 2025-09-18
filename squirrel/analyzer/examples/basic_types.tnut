@@ -1,7 +1,6 @@
-// Test file for type annotation parsing
-// These should all parse without "Statement expected" or "End of statement expected" errors
+// Test file for type annotation parsings
 
-// Function return type annotations
+// Function return type
 function getAge(): int 
 {
     return 25;
@@ -22,16 +21,16 @@ function getNumbers(): array<int>
     return [1, 2, 3];
 }
 
-// Variable type annotations with optional types
+// Variable types/optionals
 local name: string = "test";
 local optional: string? = "hello";
 local maybeNull: entity? = null;
 local optionalNumber: int? = 42;
 
-// Generic types
+// Iterable types
 local numbers: array<int> = [1, 2, 3];
 local names: array<string> = ["a", "b", "c"];
-local entities: array<entity> = [];
+local entities: array<entity> = [Entities.First()];
 local optionalArray: array<string>? = ["test"];
 
 // Function parameters with types
@@ -61,7 +60,6 @@ function complexFunction(
     return true;
 }
 
-// Newslot operator
 age: int <- 25;
 local score: int <- 100;
 local playerName: string <- "John";

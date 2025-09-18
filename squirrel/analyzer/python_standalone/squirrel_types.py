@@ -105,7 +105,7 @@ class ArrayType(SquirrelType):
 
 class TableType(SquirrelType):
 
-    """ Object/table type with member types """
+    """ Table type with member types """
 
     def __init__(self, member_types: tuple[SquirrelType, SquirrelType]):
 

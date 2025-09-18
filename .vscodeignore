@@ -4,7 +4,7 @@
 !README.md
 !LICENSE
 !out/**.js
-!assets/nut_icon.png
+!assets/*_icon.png
 !language-configuration.json
 !snippets/
 !syntaxes/

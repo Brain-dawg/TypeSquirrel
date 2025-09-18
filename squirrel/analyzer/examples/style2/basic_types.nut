@@ -30,7 +30,7 @@ function int processNumbers(int[] nums) {
     return sum;
 }
 
-// Object type annotation
+// Table type annotation
 local table person = {
     int age      = 30
     string name  = "John Doe"

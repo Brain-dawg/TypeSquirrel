@@ -4,3 +4,6 @@ export * from './lexer';
 export * from './parser';
 export * from './types';
 export * from './binder';
+export * from './typeSystem';
+export * from './typeChecker';
+export * from './typeCheckerIntegration';

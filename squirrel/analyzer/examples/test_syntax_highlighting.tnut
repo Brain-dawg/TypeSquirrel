@@ -29,4 +29,4 @@ function processEntity(ent: entity): bool {
 
 // Various contexts where keywords should be highlighted correctly
 local items: array = []
-const CONFIG: table = {}
+const CONFIG: table = "asdf"

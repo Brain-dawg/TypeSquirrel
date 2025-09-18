@@ -1,7 +1,7 @@
 {
   "name": "TypeSquirrel",
   "displayName": "TypeSquirrel",
-  "description": "Provides basic support for Team Fortress 2 VScript - Squirrel language (.nut).",
+  "description": "Experimental static type analyzer for the Squirrel programming language",
   "publisher": "Braindawg",
   "license": "MIT",
   "repository": {
@@ -38,7 +38,9 @@
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.0"
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:typesquirrel"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
@@ -58,6 +60,20 @@
         }
       },
       {
+        "id": "typesquirrel",
+        "aliases": [
+          "TypeSquirrel",
+          "tnut"
+        ],
+        "extensions": [
+          ".tnut"
+        ],
+        "icon": {
+          "light": "./assets/tnut_icon.png",
+          "dark": "./assets/tnut_icon.png"
+        }
+      },
+      {
         "id": "squirrelDoc",
         "configuration": "./language-configuration.json"
       }
@@ -69,10 +85,16 @@
         "path": "./syntaxes/squirrel.tmLanguage.json"
       },
       {
+        "language": "typesquirrel",
+        "scopeName": "source.typesquirrel",
+        "path": "./syntaxes/typesquirrel.tmLanguage.json"
+      },
+      {
         "scopeName": "documentation.injection.squirrel",
         "path": "./syntaxes/squirrelDoc.injection.tmLanguage.json",
         "injectTo": [
-          "source.squirrel"
+          "source.squirrel",
+          "source.typesquirrel"
         ]
       },
       {
@@ -84,6 +106,10 @@
     "snippets": [
       {
         "language": "squirrel",
+        "path": "./snippets/squirrel.json"
+      },
+      {
+        "language": "typesquirrel",
         "path": "./snippets/squirrel.json"
       }
     ],

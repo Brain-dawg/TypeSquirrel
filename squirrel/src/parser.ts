@@ -1088,7 +1088,8 @@ export class Parser {
 		
 		// Reset lexer position
 		(this.lexer as any).cursor = currentPos;
-		this.token = this.lexer.lex();
+		// Don't call lex() again - just restore the current token
+		// The token will be restored when parsePrimaryExpression continues
 		
 		return isFuncExpr;
 	}
@@ -1102,7 +1103,8 @@ export class Parser {
 		
 		// Reset lexer position
 		(this.lexer as any).cursor = currentPos;
-		this.token = this.lexer.lex();
+		// Don't call lex() again - just restore the current token
+		// The token will be restored when parsePrimaryExpression continues
 		
 		return isClassExpr;
 	}
@@ -1778,13 +1780,14 @@ export class Parser {
 
 		this.parseExpected(SyntaxKind.ConstKeyword);
 		const name = this.parseIdentifierWithDiagnostic();
+		const typeAnnotation = this.parseTypeAnnotation();
 		const initialiser = this.parseInitialiser(SyntaxKind.EqualsToken);
 		this.scalarLiteralErrors(initialiser);
 
 		const end = this.lexer.lastToken.end;
 		// Here is the only place where semicolon is parsed immediately. Why? Because it's a squirrel lang.
 		this.parseEndOfStatement();
-		const node: ConstStatement = { kind: SyntaxKind.ConstStatement, start, end, name, initialiser };
+		const node: ConstStatement = { kind: SyntaxKind.ConstStatement, start, end, name, typeAnnotation, initialiser };
 		overrideParentInImmediateChildren(node);
 
 		return node;

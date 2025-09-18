@@ -379,7 +379,7 @@ export const TokenToString = new Map<SyntaxKind, string>([
 
 	[SyntaxKind.FloatToken, 'float'],
 	[SyntaxKind.IdentifierToken, 'identifier'],
-	[SyntaxKind.IntegerToken, 'integer'],
+	[SyntaxKind.IntegerToken, 'int'],
 	[SyntaxKind.StringToken, 'string'],
 	[SyntaxKind.VerbatimStringToken, 'string'],
 
@@ -619,6 +619,7 @@ export interface ExpressionStatement extends Statement {
 export interface ConstStatement extends Statement, NamedDeclaration {
 	readonly kind: SyntaxKind.ConstStatement;
 	readonly name: Identifier;
+	readonly typeAnnotation?: TypeAnnotation;
 	readonly initialiser: Expression; //ScalarLiteralExpression;
 }
 

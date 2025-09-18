@@ -238,6 +238,9 @@ function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagno
 async function validateTextDocument(document: TextDocument): Promise<Diagnostic[]> {
 	const settings = await getDocumentSettings(document.uri);
 	
+	// Only run type checking for TypeSquirrel files (.tnut)
+	const isTypeSquirrelFile = document.uri.endsWith('.tnut') || document.languageId === 'typesquirrel';
+	
 	const lexer = new Lexer(document.getText());
 	
 	const parser = new Parser(lexer);
@@ -258,17 +261,20 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	const diagnostics: Diagnostic[] = [];
 	processLexer(document, lexer, diagnostics);
 
-	for (const error of parser.getDiagnostics()) {
-		diagnostics.push({
-			range: {
-				// Conversion from 0 based offset
-				start: document.positionAt(error.start),
-				end: document.positionAt(error.end)
-			},
-			message: error.message,
-			severity: error.severity,
-			source: "TypeSquirrel"
-		});
+	// Only run parser diagnostics for TypeSquirrel files
+	if (isTypeSquirrelFile) {
+		for (const error of parser.getDiagnostics()) {
+			diagnostics.push({
+				range: {
+					// Conversion from 0 based offset
+					start: document.positionAt(error.start),
+					end: document.positionAt(error.end)
+				},
+				message: error.message,
+				severity: error.severity,
+				source: "TypeSquirrel"
+			});
+		}
 	}
 
 	return diagnostics;

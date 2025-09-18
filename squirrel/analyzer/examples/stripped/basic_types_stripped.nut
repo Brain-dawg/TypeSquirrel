@@ -30,7 +30,7 @@ function processNumbers(nums) {
     return sum;
 }
 
-// Object type annotation
+// Table type annotation
 local person = {
     name = "John Doe",
     age = 30,

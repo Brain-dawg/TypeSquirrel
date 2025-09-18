@@ -22,9 +22,12 @@ export function activate(context: ExtensionContext) {
 	};
 
 	const clientOptions: LanguageClientOptions = {
-		documentSelector: [{ language: 'squirrel' }],
+		documentSelector: [
+			{ language: 'squirrel' },
+			{ language: 'typesquirrel' }
+		],
 		synchronize: {
-			fileEvents: workspace.createFileSystemWatcher('**/*.nut')
+			fileEvents: workspace.createFileSystemWatcher('**/*.{nut,tnut}')
 		}
 	};
 

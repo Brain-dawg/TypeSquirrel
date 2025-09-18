@@ -98,6 +98,7 @@ export const instancesVariables: InstanceDocs = loadInstanceDocs(docs.instancesV
 
 export const otherMethods: Docs = new Map();
 export const otherVariables: Docs = new Map();
+
 // Combine instances methods/constants into a single one
 for (const [instanceName, innerMap] of instancesVariables) {
 	// hardcode 
