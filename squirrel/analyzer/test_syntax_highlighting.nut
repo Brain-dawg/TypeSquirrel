@@ -1,0 +1,32 @@
+// Test file to verify syntax highlighting improvements
+
+// Variable declarations with type annotations
+local var: entity = Entities.First()
+local player: CTFPlayer = null
+const MAX_HEALTH: integer = 100
+
+// Class declarations
+class MyClass {
+    constructor() {}
+}
+
+class DerivedClass extends MyClass {
+    function test() {
+        return true
+    }
+}
+
+// Assignment-style class
+MyOtherClass <- class {
+    value = 42
+}
+
+// Function with type annotations
+function processEntity(ent: entity): bool {
+    if (ent == null) return false
+    return true
+}
+
+// Various contexts where keywords should be highlighted correctly
+local items: array = []
+const CONFIG: table = {}

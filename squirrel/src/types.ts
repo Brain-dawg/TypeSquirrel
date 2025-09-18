@@ -184,6 +184,7 @@ export const enum SyntaxKind {
 	LocalStatement,
 	VariableDeclaration,
 	ParameterDeclaration,
+	TypeAnnotation,
 	ConstStatement,
 	FunctionDeclaration,
 	LocalFunctionDeclaration,
@@ -626,9 +627,17 @@ export interface LocalStatement extends Statement {
 	readonly declarations: NodeArray<VariableDeclaration>;
 }
 
+export interface TypeAnnotation extends Node {
+	readonly kind: SyntaxKind.TypeAnnotation;
+	readonly typeName: Identifier;
+	readonly isOptional?: boolean;
+	readonly genericArguments?: NodeArray<TypeAnnotation>;
+}
+
 export interface VariableDeclaration extends NamedDeclaration {
 	readonly kind: SyntaxKind.VariableDeclaration;
 	readonly name: Identifier;
+	readonly typeAnnotation?: TypeAnnotation;
 	readonly initialiser?: Expression;
 }
 
@@ -815,6 +824,7 @@ export interface VariedArgs extends Node {
 export interface ParameterDeclaration extends NamedDeclaration {
 	readonly kind: SyntaxKind.ParameterDeclaration;
 	readonly name: Identifier;
+	readonly typeAnnotation?: TypeAnnotation;
 	readonly initialiser?: Expression;
 }
 
@@ -1249,6 +1259,24 @@ const forEachChildTable: ForEachChildTable = {
 	},
 	[SyntaxKind.VariableDeclaration]: function(node: VariableDeclaration, callback: (childNode: Node) => void): void {
 		callback(node.name);
+		if (node.typeAnnotation) {
+			callback(node.typeAnnotation);
+		}
+		if (node.initialiser) {
+			callback(node.initialiser);
+		}
+	},
+	[SyntaxKind.TypeAnnotation]: function(node: TypeAnnotation, callback: (childNode: Node) => void): void {
+		callback(node.typeName);
+		if (node.genericArguments) {
+			callback(node.genericArguments);
+		}
+	},
+	[SyntaxKind.ParameterDeclaration]: function(node: ParameterDeclaration, callback: (childNode: Node) => void): void {
+		callback(node.name);
+		if (node.typeAnnotation) {
+			callback(node.typeAnnotation);
+		}
 		if (node.initialiser) {
 			callback(node.initialiser);
 		}
