@@ -1,5 +1,5 @@
 import { Lexer } from "./lexer";
-import { Node, SyntaxKind, NodeArray, forEachChild, Token, VScriptDiagnostic, DiagnosticSeverity, Identifier, TokenToString, isTokenAValidIdentifier, isTokenAKeyword, Expression, PrefixUnaryExpression, VariableDeclaration, Parameter, VariedArgs, Name, isTokenAString, Statement, BinaryOperator, BinaryExpression, OperatorPrecedence, isAssignmentOperator, getBinaryOperatorPrecedence, PrimaryExpression, ConditionalExpression, PrefixUnaryOperator, DeleteExpression, TypeOfExpression, ResumeExpression, CloneExpression, RawCallExpression, RootAccessExpression, LiteralExpression, TokenToExpression, ParenthesisedExpression, ArrayLiteralExpression, TableLiteralExpression, TableLiteralMember, TableMethod, TableConstructor, TablePropertyAssignment, FunctionExpression, LambdaExpression, ClassExpression, PostfixUnaryExpression, PostfixUnaryOperator, PropertyAccessExpression, ElementAccessExpression, CallExpression, EmptyStatement, BlockStatement, IfStatement, WhileStatement, DoStatement, ForStatement, LocalStatement, ForEachStatement, SwitchStatement, CaseBlock, CaseClause, DefaultClause, LocalFunctionDeclaration, ConstStatement, ReturnStatement, YieldStatement, ContinueStatement, BreakStatement, FunctionDeclaration, ClassDeclaration, ClassMember, ClassMethod, ClassConstructor, ClassPropertyAssignment, EnumDeclaration, EnumMember, TryStatement, CatchClause, ThrowStatement, ExpressionStatement, SourceFile, isValidSlotExpression, ForInitialiser, ParameterDeclaration, StringLiteral, VerbatimStringLiteral, ComputedName, PostCallInitialiser, PostCallInitialiserPropertyAssignment, Mutable } from "./types";
+import { Node, SyntaxKind, NodeArray, forEachChild, Token, VScriptDiagnostic, DiagnosticSeverity, Identifier, TokenToString, isTokenAValidIdentifier, isTokenAKeyword, Expression, PrefixUnaryExpression, VariableDeclaration, Parameter, VariedArgs, Name, isTokenAString, Statement, BinaryOperator, BinaryExpression, OperatorPrecedence, isAssignmentOperator, getBinaryOperatorPrecedence, PrimaryExpression, ConditionalExpression, PrefixUnaryOperator, DeleteExpression, TypeOfExpression, ResumeExpression, CloneExpression, RawCallExpression, RootAccessExpression, LiteralExpression, TokenToExpression, ParenthesisedExpression, ArrayLiteralExpression, TableLiteralExpression, TableLiteralMember, TableMethod, TableConstructor, TablePropertyAssignment, FunctionExpression, LambdaExpression, ClassExpression, PostfixUnaryExpression, PostfixUnaryOperator, PropertyAccessExpression, ElementAccessExpression, CallExpression, EmptyStatement, BlockStatement, IfStatement, WhileStatement, DoStatement, ForStatement, LocalStatement, ForEachStatement, SwitchStatement, CaseBlock, CaseClause, DefaultClause, LocalFunctionDeclaration, ConstStatement, ReturnStatement, YieldStatement, ContinueStatement, BreakStatement, FunctionDeclaration, ClassDeclaration, ClassMember, ClassMethod, ClassConstructor, ClassPropertyAssignment, EnumDeclaration, EnumMember, TryStatement, CatchClause, ThrowStatement, ExpressionStatement, SourceFile, isValidSlotExpression, ForInitialiser, ParameterDeclaration, StringLiteral, VerbatimStringLiteral, ComputedName, PostCallInitialiser, PostCallInitialiserPropertyAssignment, Mutable, TypeAnnotation } from "./types";
 
 
 const enum ParsingContext {
@@ -161,21 +161,37 @@ export class Parser {
 		return this.createMissingIdentifier();
 	}
 
-	private parseOptionalInitialiser(assignment: SyntaxKind.ColonToken | SyntaxKind.EqualsToken): Expression | undefined {
+	private parseOptionalInitialiser(assignment: SyntaxKind.ColonToken | SyntaxKind.EqualsToken | SyntaxKind.LessMinusToken): Expression | undefined {
 		if (!this.parseOptional(assignment)) {
-			// If the user has used a wrong assignment token
-			if (!this.parseOptional(assignment === SyntaxKind.EqualsToken ? SyntaxKind.ColonToken : SyntaxKind.EqualsToken)) {
-				return undefined;
+			// If the user has used a wrong assignment token, try the alternatives
+			if (assignment === SyntaxKind.EqualsToken) {
+				if (!this.parseOptional(SyntaxKind.ColonToken) && !this.parseOptional(SyntaxKind.LessMinusToken)) {
+					return undefined;
+				}
+			} else if (assignment === SyntaxKind.ColonToken) {
+				if (!this.parseOptional(SyntaxKind.EqualsToken) && !this.parseOptional(SyntaxKind.LessMinusToken)) {
+					return undefined;
+				}
+			} else if (assignment === SyntaxKind.LessMinusToken) {
+				if (!this.parseOptional(SyntaxKind.EqualsToken) && !this.parseOptional(SyntaxKind.ColonToken)) {
+					return undefined;
+				}
 			}
 		}
 
 		return this.parseExpression();
 	}
 
-	private parseInitialiser(assignment: SyntaxKind.ColonToken | SyntaxKind.EqualsToken): Expression {
+	private parseInitialiser(assignment: SyntaxKind.ColonToken | SyntaxKind.EqualsToken | SyntaxKind.LessMinusToken): Expression {
 		if (!this.parseExpected(assignment)) {
-			// If the user has used a wrong assignment token
-			this.parseOptional(assignment === SyntaxKind.EqualsToken ? SyntaxKind.ColonToken : SyntaxKind.EqualsToken);
+			// If the user has used a wrong assignment token, try the alternatives
+			if (assignment === SyntaxKind.EqualsToken) {
+				this.parseOptional(SyntaxKind.ColonToken) || this.parseOptional(SyntaxKind.LessMinusToken);
+			} else if (assignment === SyntaxKind.ColonToken) {
+				this.parseOptional(SyntaxKind.EqualsToken) || this.parseOptional(SyntaxKind.LessMinusToken);
+			} else if (assignment === SyntaxKind.LessMinusToken) {
+				this.parseOptional(SyntaxKind.EqualsToken) || this.parseOptional(SyntaxKind.ColonToken);
+			}
 		}
 
 		return this.parseExpression();
@@ -217,16 +233,24 @@ export class Parser {
 		const start = this.token.start;
 
 		const name = this.parseIdentifierWithDiagnostic(message);
-		const initialiser = this.parseOptionalInitialiser(SyntaxKind.EqualsToken);
+		const typeAnnotation = this.parseTypeAnnotation();
+		
+		// Check for assignment operators: = or <-
+		let initialiser: Expression | undefined;
+		if (this.token.kind === SyntaxKind.EqualsToken) {
+			initialiser = this.parseOptionalInitialiser(SyntaxKind.EqualsToken);
+		} else if (this.token.kind === SyntaxKind.LessMinusToken) {
+			initialiser = this.parseOptionalInitialiser(SyntaxKind.LessMinusToken);
+		}
 
 		const end = this.lexer.lastToken.end;
-		const node: VariableDeclaration = { kind: SyntaxKind.VariableDeclaration, start, end, name, initialiser };
+		const node: VariableDeclaration = { kind: SyntaxKind.VariableDeclaration, start, end, name, typeAnnotation, initialiser };
 		overrideParentInImmediateChildren(node);
 
 		return node;
 	}
 
-	private parseFunctionEnvironmentAndParameters(): { environment?: Expression, parameters: NodeArray<Parameter> } {
+	private parseFunctionEnvironmentAndParameters(): { environment?: Expression, parameters: NodeArray<Parameter>, returnType?: TypeAnnotation } {
 		let environment: Expression | undefined;
 		if (this.parseOptional(SyntaxKind.OpenBracketToken)) {
 			environment = this.parseExpression();
@@ -239,7 +263,111 @@ export class Parser {
 
 		const parameters = this.parseDelimitedList(ParsingContext.Parameters, this.parseParameter, SyntaxKind.CommaToken, false);
 		this.parseExpected(SyntaxKind.CloseParenthesisToken);
-		return { environment, parameters };
+		
+		// Parse return type annotation
+		const returnType = this.parseTypeAnnotation();
+		
+		return { environment, parameters, returnType };
+	}
+
+	private parseTypeAnnotation(): TypeAnnotation | undefined {
+		if (this.token.kind !== SyntaxKind.ColonToken) {
+			return undefined;
+		}
+
+		const start = this.token.start;
+		this.next(); // consume ':'
+
+		const typeName = this.parseIdentifierWithDiagnostic("Expected type name after ':'");
+		
+		let isOptional = false;
+		let genericArguments: NodeArray<TypeAnnotation> | undefined;
+
+		// Handle generic types (array<int>) - must come before optional check
+		if ((this.token.kind as SyntaxKind) === SyntaxKind.LessThanToken) {
+			this.next();
+			const args: TypeAnnotation[] = [];
+			const argsStart = this.token.start;
+			
+			do {
+				// Parse generic argument as a full type annotation to support nested generics
+				const argType = this.parseTypeAnnotationWithoutColon();
+				if (argType) {
+					args.push(argType);
+				}
+			} while (this.parseOptional(SyntaxKind.CommaToken));
+			
+			this.parseExpected(SyntaxKind.GreaterThanToken);
+			const argsEnd = this.lexer.lastToken.end;
+			genericArguments = { kind: SyntaxKind.NodeArray, start: argsStart, end: argsEnd, elements: args };
+			overrideParentInImmediateChildren(genericArguments);
+		}
+
+		// Handle optional types (type?) - must come after generic check
+		if ((this.token.kind as SyntaxKind) === SyntaxKind.QuestionToken) {
+			isOptional = true;
+			this.next();
+		}
+
+		const end = this.lexer.lastToken.end;
+		const node: TypeAnnotation = {
+			kind: SyntaxKind.TypeAnnotation,
+			start,
+			end,
+			typeName,
+			isOptional,
+			genericArguments
+		};
+		overrideParentInImmediateChildren(node);
+
+		return node;
+	}
+
+	private parseTypeAnnotationWithoutColon(): TypeAnnotation | undefined {
+		const start = this.token.start;
+		const typeName = this.parseIdentifierWithDiagnostic("Expected type name");
+		
+		let isOptional = false;
+		let genericArguments: NodeArray<TypeAnnotation> | undefined;
+
+		// Handle generic types (array<int>) - must come before optional check
+		if ((this.token.kind as SyntaxKind) === SyntaxKind.LessThanToken) {
+			this.next();
+			const args: TypeAnnotation[] = [];
+			const argsStart = this.token.start;
+			
+			do {
+				// Parse generic argument as a full type annotation to support nested generics
+				const argType = this.parseTypeAnnotationWithoutColon();
+				if (argType) {
+					args.push(argType);
+				}
+			} while (this.parseOptional(SyntaxKind.CommaToken));
+			
+			this.parseExpected(SyntaxKind.GreaterThanToken);
+			const argsEnd = this.lexer.lastToken.end;
+			genericArguments = { kind: SyntaxKind.NodeArray, start: argsStart, end: argsEnd, elements: args };
+			overrideParentInImmediateChildren(genericArguments);
+		}
+
+		// Handle optional types (type?) - must come after generic check
+		if ((this.token.kind as SyntaxKind) === SyntaxKind.QuestionToken) {
+			isOptional = true;
+			this.next();
+		}
+
+		const end = this.lexer.lastToken.end;
+		const node: TypeAnnotation = {
+			kind: SyntaxKind.TypeAnnotation,
+			start,
+			end,
+			typeName,
+			isOptional,
+			genericArguments
+		};
+		overrideParentInImmediateChildren(node);
+
+		return node;
 	}
 
 	private parseParameter(): Parameter {
@@ -256,10 +384,11 @@ export class Parser {
 		}
 
 		const name = this.parseIdentifierWithDiagnostic();
+		const typeAnnotation = this.parseTypeAnnotation();
 		const initialiser = this.parseOptionalInitialiser(SyntaxKind.EqualsToken);
 
 		const end = this.lexer.lastToken.end;
-		const node: ParameterDeclaration = { kind: SyntaxKind.ParameterDeclaration, start, end, name, initialiser };
+		const node: ParameterDeclaration = { kind: SyntaxKind.ParameterDeclaration, start, end, name, typeAnnotation, initialiser };
 		overrideParentInImmediateChildren(node);
 
 		return node;
@@ -311,12 +440,76 @@ export class Parser {
 		return { name, initialiser };
 	}
 
-	private parseMethod(): { name: Identifier, environment?: Expression, parameters: NodeArray<Parameter>, statement: Statement } {
+	private parsePropertyWithTypeAnnotation(allowedPropertyNames: number, optionalInitialisation: true): { name: Name; typeAnnotation?: TypeAnnotation; initialiser?: Expression };
+	private parsePropertyWithTypeAnnotation(allowedPropertyNames: number, optionalInitialisation: false): { name: Name; typeAnnotation?: TypeAnnotation; initialiser: Expression };
+	private parsePropertyWithTypeAnnotation(allowedPropertyNames: number, optionalInitialisation: boolean): { name: Name; typeAnnotation?: TypeAnnotation; initialiser?: Expression } {
+		if (isTokenAValidIdentifier(this.token)) {
+			const name = this.parseIdentifierWithDiagnostic();
+			const typeAnnotation = this.parseTypeAnnotation();
+			
+			// Check for assignment operators: = or <-
+			let initialiser: Expression | undefined;
+			if (optionalInitialisation) {
+				if ((this.token.kind as SyntaxKind) === SyntaxKind.EqualsToken) {
+					initialiser = this.parseOptionalInitialiser(SyntaxKind.EqualsToken);
+				} else if ((this.token.kind as SyntaxKind) === SyntaxKind.LessMinusToken) {
+					initialiser = this.parseOptionalInitialiser(SyntaxKind.LessMinusToken);
+				}
+			} else {
+				if ((this.token.kind as SyntaxKind) === SyntaxKind.EqualsToken) {
+					initialiser = this.parseInitialiser(SyntaxKind.EqualsToken);
+				} else if ((this.token.kind as SyntaxKind) === SyntaxKind.LessMinusToken) {
+					initialiser = this.parseInitialiser(SyntaxKind.LessMinusToken);
+				} else {
+					this.diagnosticAtCurrentToken("Expected '=' or '<-'.");
+					initialiser = this.createMissingIdentifier();
+				}
+			}
+			
+			return { name, typeAnnotation, initialiser };
+		}
+		if (isTokenAString(this.token)) {
+			const name = this.parseLiteralExpression();
+			const initialiser = optionalInitialisation ?
+				this.parseOptionalInitialiser(SyntaxKind.ColonToken) :
+				this.parseInitialiser(SyntaxKind.ColonToken);
+
+			if (!(allowedPropertyNames & AllowedPropertyName.String)) {
+				this.diagnostic("String property name is not allowed here.", name.start, name.end);
+			}
+			return { name: name as StringLiteral | VerbatimStringLiteral, typeAnnotation: undefined, initialiser };
+		}
+		if (this.token.kind === SyntaxKind.OpenBracketToken) {
+			const start = this.token.start;
+			this.parseExpected(SyntaxKind.OpenBracketToken);
+			const expression = this.parseCommaExpression();
+			this.parseExpected(SyntaxKind.CloseBracketToken);
+			const end = this.lexer.lastToken.end;
+
+			const name: ComputedName = { kind: SyntaxKind.ComputedName, start, end, expression };
+
+			const initialiser = optionalInitialisation ?
+				this.parseOptionalInitialiser(SyntaxKind.EqualsToken) :
+				this.parseInitialiser(SyntaxKind.EqualsToken);
+
+			if (!(allowedPropertyNames & AllowedPropertyName.Computed)) {
+				this.diagnostic("Computed property name is not allowed here.", start, end);
+			}
+			return { name, typeAnnotation: undefined, initialiser };
+		}
+
+		this.diagnosticAtCurrentToken("Expected property.");
+		const name = this.createMissingIdentifier();
+		const initialiser = this.createMissingIdentifier();
+		return { name, typeAnnotation: undefined, initialiser };
+	}
+
+	private parseMethod(): { name: Identifier, environment?: Expression, parameters: NodeArray<Parameter>, returnType?: TypeAnnotation, statement: Statement } {
 		this.parseExpected(SyntaxKind.FunctionKeyword);
 		const name = this.parseIdentifierWithDiagnostic();
-		const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
+		const { environment, parameters, returnType } = this.parseFunctionEnvironmentAndParameters();
 		const statement = this.parseStatement();
-		return { name, environment, parameters, statement };
+		return { name, environment, parameters, returnType, statement };
 	}
 
 	private parseConstructor(): { environment?: Expression, parameters: NodeArray<Parameter>, statement: Statement } {
@@ -1030,7 +1223,7 @@ export class Parser {
 
 		switch (this.token.kind) {
 		case SyntaxKind.FunctionKeyword: {
-			const { name, environment, parameters, statement } = this.parseMethod();
+			const { name, environment, parameters, returnType, statement } = this.parseMethod();
 
 			const end = this.lexer.lastToken.end;
 			const node: TableMethod | TableConstructor = name.value === "constructor" ?
@@ -1065,7 +1258,7 @@ export class Parser {
 		const start = this.token.start;
 		
 		this.parseExpected(SyntaxKind.FunctionKeyword);
-		const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
+		const { environment, parameters, returnType } = this.parseFunctionEnvironmentAndParameters();
 		const statement = this.parseStatement();
 
 		const end = this.lexer.lastToken.end;
@@ -1079,7 +1272,7 @@ export class Parser {
 		const start = this.token.start;
 		
 		this.parseExpected(SyntaxKind.AtToken);
-		const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
+		const { environment, parameters, returnType } = this.parseFunctionEnvironmentAndParameters();
 		const expression = this.parseExpression();
 
 		const end = this.lexer.lastToken.end;
@@ -1414,7 +1607,7 @@ export class Parser {
 
 		if (this.parseOptional(SyntaxKind.FunctionKeyword)) {
 			const name = this.parseIdentifierWithDiagnostic();
-			const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
+			const { environment, parameters, returnType } = this.parseFunctionEnvironmentAndParameters();
 			const statement = this.parseStatement();
 
 			const end = this.lexer.lastToken.end;
@@ -1528,7 +1721,7 @@ export class Parser {
 			expression :
 			{ kind: SyntaxKind.ComputedName, start: expression.start, end: expression.end, expression };
 
-		const { environment, parameters } = this.parseFunctionEnvironmentAndParameters();
+		const { environment, parameters, returnType } = this.parseFunctionEnvironmentAndParameters();
 		const statement = this.parseStatement();
 
 		const end = this.lexer.lastToken.end;
@@ -1577,7 +1770,7 @@ export class Parser {
 		const isStatic = this.parseOptional(SyntaxKind.StaticKeyword);
 		switch (this.token.kind) {
 		case SyntaxKind.FunctionKeyword: {
-			const { name, environment, parameters, statement } = this.parseMethod();
+			const { name, environment, parameters, returnType, statement } = this.parseMethod();
 
 			const end = this.lexer.lastToken.end;
 			const node: ClassMethod | ClassConstructor = name.value === "constructor" ?
@@ -1597,7 +1790,7 @@ export class Parser {
 			return node;
 		}
 		default: {
-			const { name, initialiser } = this.parseProperty(AllowedPropertyName.Identifier | AllowedPropertyName.Computed, /*optionalInitialisation*/ false);
+			const { name, typeAnnotation, initialiser } = this.parsePropertyWithTypeAnnotation(AllowedPropertyName.Identifier | AllowedPropertyName.Computed, /*optionalInitialisation*/ false);
 
 			const end = this.lexer.lastToken.end;
 			const node: ClassPropertyAssignment = { kind: SyntaxKind.ClassPropertyAssignment, start, end, name, isStatic, initialiser };
