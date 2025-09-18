@@ -1,14 +1,14 @@
 {
   "name": "TypeSquirrel",
-  "displayName": "TypeSquirrel Analyzer",
+  "displayName": "TypeSquirrel",
   "description": "Provides basic support for Team Fortress 2 VScript - Squirrel language (.nut).",
-  "publisher": "ocet247",
+  "publisher": "Braindawg",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ocet247/TypeSquirrel"
+    "url": "https://github.com/Brain-dawg/TypeSquirrel"
   },
-  "version": "2.3.3",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.96.1"
   },

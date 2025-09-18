@@ -278,7 +278,7 @@ export class Parser {
 		const start = this.token.start;
 		this.next(); // consume ':'
 
-		const typeName = this.parseIdentifierWithDiagnostic("Expected type name after ':'");
+		const typeName = this.parseTypeNameIdentifier();
 		
 		let isOptional = false;
 		let genericArguments: NodeArray<TypeAnnotation> | undefined;
@@ -297,7 +297,26 @@ export class Parser {
 				}
 			} while (this.parseOptional(SyntaxKind.CommaToken));
 			
-			this.parseExpected(SyntaxKind.GreaterThanToken);
+			// Handle >> token that needs to be split into > >
+			if ((this.token.kind as SyntaxKind) === SyntaxKind.GreaterThanGreaterThanToken) {
+				// We need to consume one > and leave the other > for the outer generic
+				// Create a new > token at the current position + 1
+				const currentToken = this.token;
+				this.next(); // consume the >>
+				
+				// Manually create a > token for the remaining part
+				const remainingToken: Token<SyntaxKind.GreaterThanToken> = {
+					kind: SyntaxKind.GreaterThanToken,
+					start: currentToken.start + 1,
+					end: currentToken.end,
+					value: undefined
+				};
+				
+				// Replace the current token with the remaining >
+				(this as any).token = remainingToken;
+			} else {
+				this.parseExpected(SyntaxKind.GreaterThanToken);
+			}
 			const argsEnd = this.lexer.lastToken.end;
 			genericArguments = { kind: SyntaxKind.NodeArray, start: argsStart, end: argsEnd, elements: args };
 			overrideParentInImmediateChildren(genericArguments);
@@ -323,9 +342,41 @@ export class Parser {
 		return node;
 	}
 
+	private parseTypeNameIdentifier(): Identifier {
+		const token = this.token;
+		
+		// Allow both identifiers and certain keywords as type names
+		if (isTokenAValidIdentifier(token) || this.isValidTypeKeyword(token.kind)) {
+			this.next();
+			return {
+				kind: SyntaxKind.Identifier,
+				start: token.start,
+				end: token.end,
+				value: token.value || TokenToString.get(token.kind) || ""
+			};
+		}
+
+		this.diagnosticAtCurrentToken("Expected type name.");
+		return this.createMissingIdentifier();
+	}
+
+	private isValidTypeKeyword(kind: SyntaxKind): boolean {
+		// Allow these keywords to be used as type names
+		switch (kind) {
+			case SyntaxKind.ClassKeyword:
+			case SyntaxKind.FunctionKeyword:
+			case SyntaxKind.NullKeyword:
+			case SyntaxKind.TrueKeyword:
+			case SyntaxKind.FalseKeyword:
+				return true;
+			default:
+				return false;
+		}
+	}
+
 	private parseTypeAnnotationWithoutColon(): TypeAnnotation | undefined {
 		const start = this.token.start;
-		const typeName = this.parseIdentifierWithDiagnostic("Expected type name");
+		const typeName = this.parseTypeNameIdentifier();
 		
 		let isOptional = false;
 		let genericArguments: NodeArray<TypeAnnotation> | undefined;
@@ -344,7 +395,26 @@ export class Parser {
 				}
 			} while (this.parseOptional(SyntaxKind.CommaToken));
 			
-			this.parseExpected(SyntaxKind.GreaterThanToken);
+			// Handle >> token that needs to be split into > >
+			if ((this.token.kind as SyntaxKind) === SyntaxKind.GreaterThanGreaterThanToken) {
+				// We need to consume one > and leave the other > for the outer generic
+				// Create a new > token at the current position + 1
+				const currentToken = this.token;
+				this.next(); // consume the >>
+				
+				// Manually create a > token for the remaining part
+				const remainingToken: Token<SyntaxKind.GreaterThanToken> = {
+					kind: SyntaxKind.GreaterThanToken,
+					start: currentToken.start + 1,
+					end: currentToken.end,
+					value: undefined
+				};
+				
+				// Replace the current token with the remaining >
+				(this as any).token = remainingToken;
+			} else {
+				this.parseExpected(SyntaxKind.GreaterThanToken);
+			}
 			const argsEnd = this.lexer.lastToken.end;
 			genericArguments = { kind: SyntaxKind.NodeArray, start: argsStart, end: argsEnd, elements: args };
 			overrideParentInImmediateChildren(genericArguments);
@@ -888,6 +958,15 @@ export class Parser {
 	private parseExpression(message?: string): Expression {
 		const start = this.token.start;
 		let expr = this.parseBinaryExpressionOrHigher(OperatorPrecedence.Lowest, message);
+		
+		// Check for type annotation followed by assignment operator
+		// Pattern: identifier : type = value OR identifier : type <- value
+		if (this.token.kind === SyntaxKind.ColonToken && isValidSlotExpression(expr)) {
+			// Skip over the type annotation
+			this.next(); // consume ':'
+			this.parseTypeAnnotationWithoutColon(); // consume the type
+		}
+		
 		if (isAssignmentOperator(this.token)) {
 			if (!isValidSlotExpression(expr)) {
 				this.diagnostic("The left-hand side of an assignment expression must be a variable or a property access.", expr.start, expr.end);
@@ -976,14 +1055,67 @@ export class Parser {
 		case SyntaxKind.OpenBraceToken:
 			return this.parseTableLiteralExpression();
 		case SyntaxKind.FunctionKeyword:
-			return this.parseFunctionExpression();
+			// Check if this is actually a function expression or just the keyword used as identifier
+			// Function expressions must be followed by '(' or '['
+			if (this.isActualFunctionExpression()) {
+				return this.parseFunctionExpression();
+			} else {
+				// Treat as identifier
+				return this.parseKeywordAsIdentifier();
+			}
 		case SyntaxKind.AtToken:
 			return this.parseLambdaExpression();
 		case SyntaxKind.ClassKeyword:
-			return this.parseClassExpression();
+			// Check if this is actually a class expression or just the keyword used as identifier
+			// Class expressions must be followed by '{' or 'extends'
+			if (this.isActualClassExpression()) {
+				return this.parseClassExpression();
+			} else {
+				// Treat as identifier
+				return this.parseKeywordAsIdentifier();
+			}
 		default:
 			return this.parseIdentifierWithDiagnostic(message ? message : "Expression expected.");
 		}
+	}
+
+	private isActualFunctionExpression(): boolean {
+		// Look ahead to see if this is really a function expression
+		// Function expressions are followed by '(' or '[' (for environment)
+		const currentPos = (this.lexer as any).cursor;
+		const nextToken = this.lexer.lex();
+		const isFuncExpr = nextToken.kind === SyntaxKind.OpenParenthesisToken || nextToken.kind === SyntaxKind.OpenBracketToken;
+		
+		// Reset lexer position
+		(this.lexer as any).cursor = currentPos;
+		this.token = this.lexer.lex();
+		
+		return isFuncExpr;
+	}
+
+	private isActualClassExpression(): boolean {
+		// Look ahead to see if this is really a class expression
+		// Class expressions are followed by '{' or 'extends'
+		const currentPos = (this.lexer as any).cursor;
+		const nextToken = this.lexer.lex();
+		const isClassExpr = nextToken.kind === SyntaxKind.OpenBraceToken || nextToken.kind === SyntaxKind.ExtendsKeyword;
+		
+		// Reset lexer position
+		(this.lexer as any).cursor = currentPos;
+		this.token = this.lexer.lex();
+		
+		return isClassExpr;
+	}
+
+	private parseKeywordAsIdentifier(): Identifier {
+		const token = this.token;
+		this.next();
+		return {
+			kind: SyntaxKind.Identifier,
+			start: token.start,
+			end: token.end,
+			value: TokenToString.get(token.kind) || ""
+		};
 	}
 
 	private parsePostfixExpression(expression: Expression): Expression {
@@ -1883,6 +2015,7 @@ export class Parser {
 
 		return node;
 	}
+
 
 	private parseExpressionStatement(): ExpressionStatement {
 		const start = this.token.start;

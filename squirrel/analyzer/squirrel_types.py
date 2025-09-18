@@ -35,6 +35,9 @@ class SquirrelType:
 
 class PrimitiveType(SquirrelType):
     """ Primitive types: int, float, string, bool, null """
+    def __init__(self, name: str):
+        self.name = name
+        super().__init__(name)
     # pass
 
 
@@ -205,17 +208,17 @@ BLOB_TYPE      = ClassType("blob")
 # Built-in types
 SQUIRREL_TYPES: dict[str, SquirrelType] = {
 
-    NULL_TYPE.__str__()     : NULL_TYPE,
-    BOOL_TYPE.__str__()     : BOOL_TYPE,
-    INT_TYPE.__str__()      : INT_TYPE,
-    FLOAT_TYPE.__str__()    : FLOAT_TYPE,
-    CHAR_TYPE.__str__()     : CHAR_TYPE,
-    STRING_TYPE.__str__()   : STRING_TYPE,
-    FUNCTION_TYPE.__str__() : FUNCTION_TYPE,
-    ARRAY_TYPE.__str__()    : ARRAY_TYPE,
-    TABLE_TYPE.__str__()    : TABLE_TYPE,
-    CLASS_TYPE.__str__()    : CLASS_TYPE,
-    INSTANCE_TYPE.__str__() : INSTANCE_TYPE,
-    BLOB_TYPE.__str__()     : BLOB_TYPE,
-    ANY_TYPE.__str__()      : ANY_TYPE
+    NULL_TYPE.name     : NULL_TYPE,
+    BOOL_TYPE.name     : BOOL_TYPE,
+    INT_TYPE.name      : INT_TYPE,
+    FLOAT_TYPE.name    : FLOAT_TYPE,
+    CHAR_TYPE.name     : CHAR_TYPE,
+    STRING_TYPE.name   : STRING_TYPE,
+    FUNCTION_TYPE.name : FUNCTION_TYPE,
+    ARRAY_TYPE.name    : ARRAY_TYPE,
+    TABLE_TYPE.name    : TABLE_TYPE,
+    CLASS_TYPE.name    : CLASS_TYPE,
+    INSTANCE_TYPE.name : INSTANCE_TYPE,
+    BLOB_TYPE.name     : BLOB_TYPE,
+    ANY_TYPE.name      : ANY_TYPE
 }

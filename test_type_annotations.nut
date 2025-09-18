@@ -1,7 +1,7 @@
 // Test file for type annotation parsing
 // These should all parse without "Statement expected" or "End of statement expected" errors
 
-// Function return type annotations (Issue 1 - Fixed)
+// Function return type annotations
 function getAge(): int 
 {
     return 25;
@@ -22,13 +22,13 @@ function getNumbers(): array<int>
     return [1, 2, 3];
 }
 
-// Variable type annotations with optional types (Issue 2 - Fixed)
+// Variable type annotations with optional types
 local name: string = "test";
 local optional: string? = "hello";
 local maybeNull: entity? = null;
 local optionalNumber: int? = 42;
 
-// Generic types (Issue 3 - Fixed)
+// Generic types
 local numbers: array<int> = [1, 2, 3];
 local names: array<string> = ["a", "b", "c"];
 local entities: array<entity> = [];
@@ -46,8 +46,8 @@ function processOptional(value: string?): bool {
     return false;
 }
 
-// Complex nested generics (Issue 1 - Fixed)
-function processComplexNesting(data: array<array<string>>): int {
+// Complex nested generics
+function processComplexNesting(data: array< array<string> >): int {
     return data.len();
 }
 
@@ -61,13 +61,13 @@ function complexFunction(
     return true;
 }
 
-// Newslot operator (Issue 2 - Fixed)
+// Newslot operator
 age: int <- 25;
 local score: int <- 100;
 local playerName: string <- "John";
 local optionalEntity: entity? <- null;
 
-// Class member variables with type annotations (Issue 3 - Fixed)
+// Class member variables with type annotations
 class Animal {
     name: string = "Unknown";
     age: int = 0;
@@ -96,3 +96,21 @@ class TestClass {
     optionalValue: string? = null;
     complexType: array<string> = ["a", "b"];
 }
+
+// Keywords as type names
+function MakeClass(): class {
+
+    local cls = class {
+
+        Test = @() true
+    }
+    return cls
+}
+
+function getFunction(): function {
+    return @() 42;
+}
+
+local myClass: class = MakeClass();
+local myFunc: function = getFunction();
+local isNull: null = null;

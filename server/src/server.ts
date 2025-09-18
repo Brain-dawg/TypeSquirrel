@@ -230,7 +230,7 @@ function processLexer(document: TextDocument, lexer: Lexer, diagnostics?: Diagno
 			},
 			message: error.message,
 			severity: error.severity,
-			source: "tf2-vscript-support"
+			source: "TypeSquirrel"
 		});
 	}
 }
@@ -267,7 +267,7 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 			},
 			message: error.message,
 			severity: error.severity,
-			source: "tf2-vscript-support"
+			source: "TypeSquirrel"
 		});
 	}
 
@@ -304,7 +304,7 @@ function runParse(document: TextDocument, lexer: Lexer, diagnostics: Diagnostic[
 				message: `'${signature}' is deprecated.`,
 				severity: DiagnosticSeverity.Hint,
 				tags: [DiagnosticTag.Deprecated],
-				source: "tf2-vscript-support"
+				source: "TypeSquirrel"
 			});
 		}
 
@@ -338,7 +338,7 @@ function runParse(document: TextDocument, lexer: Lexer, diagnostics: Diagnostic[
 			range,
 			message,
 			severity: DiagnosticSeverity.Error,
-			source: "tf2-vscript-support"
+			source: "TypeSquirrel"
 		});
 	}
 }

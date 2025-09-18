@@ -7,7 +7,6 @@ sound = "buttons/button01.wav"
 model = "models/props/button.mdl"
 Material = "metal/metalwall001"
 
-// Number keyvalues (should be highlighted with entity.name.keyvalue.number.squirrel)
 health = 100
 damage = 50
 speed = 300
