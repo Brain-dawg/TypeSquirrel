@@ -9,6 +9,61 @@ local INPUT_FILENAMES = [
     "input5.nut"
 ]
 
+// Example code with type annotations
+local exampleCode = @"
+// Function with type annotations
+function getAge(): int {
+    return 25;
+}
+
+function greet(name: string, age: int): string {
+    return ""Hello "" + name + "", you are "" + age;
+}
+
+// Variables with type annotations
+local playerName: string = ""John"";
+local playerAge: int = getAge();
+local isAlive: bool = true;
+
+// Optional types
+local maybeScore: int? = null;
+local optionalName: string? = ""Optional"";
+
+// Generic types
+local numbers: array<int> = [1, 2, 3, 4, 5];
+local names: array<string> = [""Alice"", ""Bob"", ""Charlie""];
+
+// Complex nested generics
+local matrix: array<array<int>> = [[1, 2], [3, 4]];
+
+// Class with type annotations
+class Player {
+    name: string = ""Unknown"";
+    health: int = 100;
+    isAlive: bool = true;
+    
+    constructor(name: string, health: int) {
+        this.name = name;
+        this.health = health;
+    }
+    
+    function takeDamage(damage: int): void {
+        this.health -= damage;
+        if (this.health <= 0) {
+            this.isAlive = false;
+        }
+    }
+    
+    function getName(): string {
+        return this.name;
+    }
+}
+
+// Newslot operator with types
+age: int <- 30;
+score: float <- 99.5;
+";
+
 /**
  * Strips type annotations from Squirrel source code while preserving formatting
  * Squirrel port of the Python TypeAnnotationStripper class
@@ -425,61 +480,6 @@ function stripTypeAnnotationsFromFile(inputFile, outputFile = null) {
 function demonstrateTypeStripping() {
 
     print("=== Type Annotation Stripper Demo ===");
-    
-    // Example code with type annotations
-    local exampleCode = @"
-// Function with type annotations
-function getAge(): int {
-    return 25;
-}
-
-function greet(name: string, age: int): string {
-    return ""Hello "" + name + "", you are "" + age;
-}
-
-// Variables with type annotations
-local playerName: string = ""John"";
-local playerAge: int = getAge();
-local isAlive: bool = true;
-
-// Optional types
-local maybeScore: int? = null;
-local optionalName: string? = ""Optional"";
-
-// Generic types
-local numbers: array<int> = [1, 2, 3, 4, 5];
-local names: array<string> = [""Alice"", ""Bob"", ""Charlie""];
-
-// Complex nested generics
-local matrix: array<array<int>> = [[1, 2], [3, 4]];
-
-// Class with type annotations
-class Player {
-    name: string = ""Unknown"";
-    health: int = 100;
-    isAlive: bool = true;
-    
-    constructor(name: string, health: int) {
-        this.name = name;
-        this.health = health;
-    }
-    
-    function takeDamage(damage: int): void {
-        this.health -= damage;
-        if (this.health <= 0) {
-            this.isAlive = false;
-        }
-    }
-    
-    function getName(): string {
-        return this.name;
-    }
-}
-
-// Newslot operator with types
-age: int <- 30;
-score: float <- 99.5;
-";
 
     print("Original code:");
     print("==============");

@@ -2,8 +2,8 @@
 
 // Variable declarations with type annotations
 local var: entity = Entities.First()
-local player: CTFPlayer = null
-const MAX_HEALTH: integer = 100
+local player: entity? = null
+const MAX_HEALTH: int = 100
 
 // Class declarations
 class MyClass {

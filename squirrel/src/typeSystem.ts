@@ -24,6 +24,10 @@ export abstract class SquirrelType {
         if (this instanceof NullType) {
             return other instanceof NullType || other instanceof OptionalType;
         }
+        // Allow non-optional types to be assigned to optional types
+        if (other instanceof OptionalType) {
+            return this.isAssignableTo(other.innerType);
+        }
         return false;
     }
 }

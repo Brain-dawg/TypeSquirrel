@@ -949,7 +949,7 @@ export class TokenIterator {
 			if (entry) {
 				return entry;
 			}
-
+			//@ts-expect-error
 			for (const methods of globals.instancesMethods.values()) {
 				const entry = methods.get(methodName);
 				if (entry) {
@@ -997,13 +997,15 @@ export class TokenIterator {
 				return entry;
 			}
 
+			//@ts-expect-error
 			for (const methods of globals.instancesMethods.values()) {
 				const entry = methods.get(name);
 				if (entry) {
 					return entry;
 				}
 			}
-
+			
+			//@ts-expect-error
 			for (const members of globals.instancesVariables.values()) {
 				const entry = members.get(name);
 				if (entry) {

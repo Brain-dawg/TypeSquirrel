@@ -1,11 +1,4 @@
-import { SquirrelTypeAnalyzer } from './squirrel/src/typeCheckerIntegration';
-
-// Demo TypeScript code showing how to use the type checker
-const analyzer = new SquirrelTypeAnalyzer({
-    strictNullChecks: true,
-    strictFunctionTypes: true,
-    allowImplicitAny: false
-});
+import { checkSquirrelCode } from './squirrel/src/typeCheckerIntegration';
 
 // Example Squirrel code with type annotations
 const squirrelCode = `
@@ -68,107 +61,47 @@ score: float <- 99.5;
 
 async function runDemo() {
     console.log("🚀 Squirrel Type Checker Demo");
-    console.log("=" .repeat(50));
+    console.log("=".repeat(50));
     
-    // Analyze the code
-    const result = analyzer.analyzeFile("demo.nut", squirrelCode);
+    // Analyze the code using the new integrated checker
+    const result = checkSquirrelCode(squirrelCode, "demo.tnut");
     
-    if (!result.success) {
-        console.log("❌ Parse Errors:");
-        result.parseErrors.forEach(error => {
-            console.log(`  ${error.location.line}:${error.location.column} - ${error.message}`);
-        });
-        return;
-    }
+    console.log("📋 Type Analysis Results:");
+    console.log(`Found ${result.diagnostics.length} diagnostics`);
     
-    console.log("✅ Parse successful!");
-    console.log("");
-    
-    // Show type checking messages
-    if (result.typeMessages.length > 0) {
-        console.log("📋 Type Analysis Results:");
-        
-        const errors = result.typeMessages.filter(msg => msg.severity === "error");
-        const warnings = result.typeMessages.filter(msg => msg.severity === "warning");
-        const infos = result.typeMessages.filter(msg => msg.severity === "info");
+    if (result.diagnostics.length > 0) {
+        const errors = result.diagnostics.filter(d => d.severity === 1);
+        const warnings = result.diagnostics.filter(d => d.severity === 2);
+        const infos = result.diagnostics.filter(d => d.severity === 3);
         
         if (errors.length > 0) {
             console.log("\n❌ Errors:");
             errors.forEach(error => {
-                console.log(`  ${error.location.line}:${error.location.column} - ${error.message}`);
+                console.log(`  ${error.start}-${error.end}: ${error.message}`);
             });
         }
         
         if (warnings.length > 0) {
             console.log("\n⚠️  Warnings:");
             warnings.forEach(warning => {
-                console.log(`  ${warning.location.line}:${warning.location.column} - ${warning.message}`);
+                console.log(`  ${warning.start}-${warning.end}: ${warning.message}`);
             });
         }
         
         if (infos.length > 0) {
             console.log("\n💡 Info:");
             infos.forEach(info => {
-                console.log(`  ${info.location.line}:${info.location.column} - ${info.message}`);
+                console.log(`  ${info.start}-${info.end}: ${info.message}`);
             });
         }
     } else {
-        console.log("✅ No type issues found!");
+        console.log("✅ No diagnostics found!");
     }
     
-    console.log("");
-    console.log("🔍 Extracting Type Information...");
-    
-    // Extract type information
-    const typeInfo = analyzer.extractTypes("demo.nut", squirrelCode);
-    
-    if (typeInfo.success) {
-        console.log(`📊 Found ${typeInfo.variables.length} variables, ${typeInfo.functions.length} functions, ${typeInfo.classes.length} classes`);
-        
-        if (typeInfo.variables.length > 0) {
-            console.log("\n📋 Variables:");
-            typeInfo.variables.forEach(variable => {
-                const typeStr = variable.type ? `: ${variable.type}` : "";
-                const scopeStr = variable.scope !== "global" ? ` (in ${variable.scope})` : "";
-                console.log(`  ${variable.name}${typeStr}${scopeStr}`);
-            });
-        }
-        
-        if (typeInfo.functions.length > 0) {
-            console.log("\n🔧 Functions:");
-            typeInfo.functions.forEach(func => {
-                const returnTypeStr = func.returnType ? `: ${func.returnType}` : "";
-                const paramStr = func.parameters.map(p => `${p.name}${p.type ? ': ' + p.type : ''}`).join(", ");
-                console.log(`  ${func.name}(${paramStr})${returnTypeStr}`);
-            });
-        }
-        
-        if (typeInfo.classes.length > 0) {
-            console.log("\n🏗️  Classes:");
-            typeInfo.classes.forEach(cls => {
-                const extendsStr = cls.baseClass ? ` extends ${cls.baseClass}` : "";
-                console.log(`  class ${cls.name}${extendsStr}`);
-                
-                if (cls.fields.length > 0) {
-                    console.log("    Fields:");
-                    cls.fields.forEach(field => {
-                        const typeStr = field.type ? `: ${field.type}` : "";
-                        console.log(`      ${field.name}${typeStr}`);
-                    });
-                }
-                
-                if (cls.methods.length > 0) {
-                    console.log("    Methods:");
-                    cls.methods.forEach(method => {
-                        const returnTypeStr = method.returnType ? `: ${method.returnType}` : "";
-                        const paramStr = method.parameters.map(p => `${p.name}${p.type ? ': ' + p.type : ''}`).join(", ");
-                        console.log(`      ${method.name}(${paramStr})${returnTypeStr}`);
-                    });
-                }
-            });
-        }
+    if (result.sourceFile) {
+        console.log("\n✅ Parse successful! AST generated.");
     } else {
-        console.log(`❌ Type extraction failed: ${typeInfo.error}`);
+        console.log("\n❌ Parse failed - no AST generated.");
     }
     
     console.log("");

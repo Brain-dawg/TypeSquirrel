@@ -24,7 +24,7 @@
 				},
 				{
 					"name": "entity.name.keyvalue.type.typesquirrel",
-					"match": "\\b(null|table|array|func|string|blob|integer|float|entity|class|instance|bool)\\b"
+					"match": "\\b(null|table|array|func|string|blob|int|integer|float|entity|class|instance|bool)\\b"
 				}
 			]
 		}

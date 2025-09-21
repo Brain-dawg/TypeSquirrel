@@ -496,7 +496,9 @@ export interface ReadonlyTextRange {
 
 export const enum DiagnosticSeverity {
 	Error = 1,
-	Warning = 2
+	Warning = 2,
+	Information = 3,
+	Hint = 4
 }
 
 export interface VScriptDiagnostic extends ReadonlyTextRange {
@@ -833,17 +835,20 @@ export type Parameter = ParameterDeclaration | VariedArgs;
 
 export interface FunctionDeclaration extends StatementFunctionBase, NamedDeclaration {
 	readonly kind: SyntaxKind.FunctionDeclaration;
+	readonly typeAnnotation?: TypeAnnotation;
 	// function a::b::c::d() {}
 	readonly name: Identifier | ComputedName;
 }
 
 export interface LocalFunctionDeclaration extends StatementFunctionBase, NamedDeclaration {
 	readonly kind: SyntaxKind.LocalFunctionDeclaration;
+	readonly typeAnnotation?: TypeAnnotation;
 	readonly name: Identifier;
 }
 
 export interface FunctionExpression extends StatementFunctionBase {
 	readonly kind: SyntaxKind.FunctionExpression;
+	readonly typeAnnotation?: TypeAnnotation;
 }
 
 export interface LambdaExpression extends FunctionLikeDeclarationBase {

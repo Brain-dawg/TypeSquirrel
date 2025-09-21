@@ -1656,16 +1656,12 @@
 					"match": "~|&|\\||\\^|>>>|<<|>>"
 				},
 				{
-					"name": "keyword.operator.assignment.squirrel",
-					"match": "<-"
-				},
-				{
 					"name": "keyword.operator.comparison.squirrel",
 					"match": "<=>|==|!=|<=|>=|<|>"
 				},
 				{
 					"name": "keyword.operator.assignment.squirrel",
-					"match": "\\+=|-=|\\*=|/=|%=|="
+					"match": "\\+=|-=|\\*=|/=|%=|=|<-"
 				},
 				{
 					"name": "keyword.operator.increment.squirrel",

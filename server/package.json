@@ -16,6 +16,6 @@
   },
   "devDependencies": {
     "squirrel": "file:../squirrel",
-    "tsconfig": "file:../tsconfig"
+    "tsconfig": "file:../tsconfig/tsconfig.json"
   }
 }

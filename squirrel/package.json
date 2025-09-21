@@ -10,6 +10,6 @@
   "main": "./src/index.ts",
   "sideEffects": false,
   "devDependencies": {
-    "tsconfig": "file:../tsconfig"
+    "tsconfig": "file:../tsconfig/tsconfig.json"
   }
 } 

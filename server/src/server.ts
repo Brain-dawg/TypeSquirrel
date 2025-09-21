@@ -15,7 +15,7 @@ import {
 } from 'vscode-languageserver/node';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 
-import { isTokenAComment, isTokenAString, isTokenTrivia, Lexer, Parser, StringToken, Token, TokenIterator, SyntaxKind, SourceFile, Binder } from 'squirrel';
+import { isTokenAComment, isTokenAString, isTokenTrivia, Lexer, Parser, StringToken, Token, TokenIterator, SyntaxKind, SourceFile, Binder, checkSquirrelCode } from 'squirrel';
 
 import onHoverHandler from './onHover';
 import { onCompletionHandler, onCompletionResolveHandler } from './onCompletion';
@@ -241,40 +241,60 @@ async function validateTextDocument(document: TextDocument): Promise<Diagnostic[
 	// Only run type checking for TypeSquirrel files (.tnut)
 	const isTypeSquirrelFile = document.uri.endsWith('.tnut') || document.languageId === 'typesquirrel';
 	
-	const lexer = new Lexer(document.getText());
-	
-	const parser = new Parser(lexer);
-	const sourceFile = parser.parseSourceFile();
-	const binder = new Binder();
-	binder.bindSourceFile(sourceFile);
-
-	documentInfo.set(document.uri, {
-		lexer,
-		parser,
-		sourceFile
-	});
-
 	if (!settings.enableDiagnostics) {
 		return [];
 	}
 
 	const diagnostics: Diagnostic[] = [];
-	processLexer(document, lexer, diagnostics);
-
-	// Only run parser diagnostics for TypeSquirrel files
+	
 	if (isTypeSquirrelFile) {
-		for (const error of parser.getDiagnostics()) {
+		// Use integrated type checker for TypeSquirrel files
+		const result = checkSquirrelCode(document.getText(), document.uri);
+		
+		// Store the parsed info for other language features
+		if (result.sourceFile) {
+			const lexer = new Lexer(document.getText());
+			const parser = new Parser(lexer);
+			const binder = new Binder();
+			binder.bindSourceFile(result.sourceFile);
+
+			documentInfo.set(document.uri, {
+				lexer,
+				parser,
+				sourceFile: result.sourceFile
+			});
+		}
+		
+		// Convert type checker diagnostics to language server format
+		for (const error of result.diagnostics) {
 			diagnostics.push({
 				range: {
-					// Conversion from 0 based offset
 					start: document.positionAt(error.start),
 					end: document.positionAt(error.end)
 				},
 				message: error.message,
-				severity: error.severity,
+				severity: error.severity === 1 ? DiagnosticSeverity.Error : 
+						 error.severity === 2 ? DiagnosticSeverity.Warning :
+						 DiagnosticSeverity.Information,
 				source: "TypeSquirrel"
 			});
 		}
+	} else {
+		// For regular Squirrel files, only do basic lexical analysis
+		const lexer = new Lexer(document.getText());
+		const parser = new Parser(lexer);
+		const sourceFile = parser.parseSourceFile();
+		const binder = new Binder();
+		binder.bindSourceFile(sourceFile);
+
+		documentInfo.set(document.uri, {
+			lexer,
+			parser,
+			sourceFile
+		});
+
+		// Only lexical diagnostics for regular Squirrel files
+		processLexer(document, lexer, diagnostics);
 	}
 
 	return diagnostics;

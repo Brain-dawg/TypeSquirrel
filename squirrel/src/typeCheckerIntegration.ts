@@ -1,7 +1,7 @@
 import { Lexer } from './lexer';
 import { Parser } from './parser';
 import { TypeChecker, TypeCheckerMessage, TypeCheckerOptions } from './typeChecker';
-import { SourceFile } from './types';
+import { SourceFile, VScriptDiagnostic, DiagnosticSeverity } from './types';
 
 /**
  * High-level interface for type checking Squirrel code
@@ -306,6 +306,84 @@ class TypeInformationExtractor {
         }
         return "<computed>";
     }
+}
+
+/**
+ * Simple function for VSCode extension integration
+ * Returns diagnostics in the format expected by the language server
+ */
+export function checkSquirrelCode(code: string, fileName: string = "untitled.nut"): { 
+    sourceFile: SourceFile | undefined, 
+    diagnostics: VScriptDiagnostic[] 
+} {
+    try {
+        // Parse the source code
+        const lexer = new Lexer(code);
+        const parser = new Parser(lexer);
+        const sourceFile = parser.parseSourceFile();
+
+        // Get parse errors
+        const parseErrors = parser.getDiagnostics();
+        
+        // Run type checking only if parsing succeeded
+        let typeErrors: VScriptDiagnostic[] = [];
+        if (parseErrors.length === 0) {
+            const typeChecker = new TypeChecker({
+                strictNullChecks: true,
+                strictFunctionTypes: true,
+                allowImplicitAny: false
+            });
+            
+            const typeMessages = typeChecker.checkFile(fileName, code, sourceFile);
+            
+            // Convert TypeCheckerMessage to VScriptDiagnostic
+            typeErrors = typeMessages.map(msg => convertToVScriptDiagnostic(msg, code));
+        }
+
+        return {
+            sourceFile: parseErrors.length === 0 ? sourceFile : undefined,
+            diagnostics: [...parseErrors, ...typeErrors]
+        };
+
+    } catch (error) {
+        // Return a single diagnostic for the error
+        return {
+            sourceFile: undefined,
+            diagnostics: [{
+                start: 0,
+                end: code.length,
+                message: `Analysis failed: ${error instanceof Error ? error.message : String(error)}`,
+                severity: DiagnosticSeverity.Error
+            }]
+        };
+    }
+}
+
+/**
+ * Convert TypeCheckerMessage to VScriptDiagnostic format
+ */
+function convertToVScriptDiagnostic(message: TypeCheckerMessage, sourceText: string): VScriptDiagnostic {
+    // Convert line/column back to byte offset
+    const lines = sourceText.split('\n');
+    let start = 0;
+    
+    // Calculate start offset
+    for (let i = 0; i < message.location.line - 1 && i < lines.length; i++) {
+        start += lines[i].length + 1; // +1 for newline character
+    }
+    start += Math.max(0, message.location.column - 1);
+    
+    // Estimate end position (start + reasonable length)
+    const end = Math.min(start + Math.max(10, message.message.length / 4), sourceText.length);
+    
+    return {
+        start,
+        end,
+        message: message.message,
+        severity: message.severity === "error" ? DiagnosticSeverity.Error : 
+                 message.severity === "warning" ? DiagnosticSeverity.Warning :
+                 DiagnosticSeverity.Information
+    };
 }
 
 // Export for use in VS Code extension

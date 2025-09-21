@@ -1,6 +1,6 @@
-MIT License
+# TypeSquirrel License (MIT + File Redistribution Requirements)
 
-Copyright (c) 2025 ocet247
+## Copyright (c) 2025 Braindawg
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -11,6 +11,40 @@ furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
+## ADDITIONAL REQUIREMENTS FOR TYPESQUIRREL FILE DISTRIBUTION:
+
+Any company, person, organization, or other entity that intends to PUBLICLY DISTRIBUTE TypeSquirrel files for use with a FREE TO USE Squirrel VM (Team Fortress 2's VScript API, sq.exe, etc.), must comply with AT LEAST ONE of the following options:
+
+1. Include the provided `tnut_strip_types.nut` file with your release.
+
+    a. You are free to modify this file, so long as the *intended behavior* of the code is not changed.
+    b. This file is provided as-is, and no guarantees are made about its real-world functionality or correctness.
+
+1a. The following can be used as an alternative to option 1:
+
+    a. Include an alternative squirrel script or code sequence that achieves the same *intended behavior* as option 1.
+
+    b. Include an easy to use, cross-platform alternative that can be run on any modern verison of Windows and Debian-based Linux with no external software dependencies (e.g. "one-click" shell scripts) that achieves the same *intended behavior* as option 1.
+
+    2. In the event that your *target environment* is modified to natively support TypeSquirrel, and option 1 or 1a are not used, the *target environment* must include the same *intended behavior* as the above options.
+
+The distributed script/program must be reasonably easy to understand and use, and not require any additional software dependencies to run.
+
+### Definitions:
+
+- "*TypeSquirrel file*" - A file containing Squirrel code using the TypeSquirrel hinting/annotation syntax (typically, however not exclusively, denoted by the `.tnut` extension).
+- "*Squirrel VM*" - A virtual machine or other program that can interpret and execute code written in the Squirrel programming language.
+- "*target environment*" - The Squirrel VM that your program is intended to run on.
+- "*parent program*" - The program that the Squirrel VM is embedded in or intended to be used alongside (e.g. Team Fortress 2 or a Source SDK Mod in the case of the VScript API).
+- "*intended behavior*" - A code sequence or program that can ingest "TypeSquirrel files" and emit an untyped, unobfuscated copy of the file.  Must be easy to understand and use, and cannot require any additional software dependencies to run beyond the Target Environment itself or the operating system it runs on.
+
+These requirements are intended to ensure that an ecosystem of type-annotated 
+files being distributed can be easily stripped, run, and modified, 
+and discourage using TypeSquirrel as a means to obfuscate code 
+or lock out users who aren't familiar or interested in the project.
+
+These additional requirements do not apply to private or internal use of TypeSquirrel files not intended for public distribution.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

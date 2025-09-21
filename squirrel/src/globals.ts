@@ -1,6 +1,10 @@
+// @ts-expect-error json
 import keywordsArray from './data/keywords.json';
+// @ts-expect-error json
 import stringCompletionsArray from './data/stringCompletions.json';
+// @ts-expect-error json
 import docs from "./data/docs.json";
+
 import { StringKind, Doc, Docs, InstanceDocs } from './types';
 
 export const keywords = new Set<string>(keywordsArray);
@@ -91,6 +95,8 @@ export const events: Docs = loadDocs(docs.events);
 export const builtInConstants: Docs = loadDocs(docs.constants);
 export const builtInVariables: Docs = loadDocs(docs.variables);
 
+export const netprops: Docs = loadDocs(docs.netprops);
+export const datamaps: Docs = loadDocs(docs.datamaps);
 
 
 export const instancesMethods: InstanceDocs = loadInstanceDocs(docs.instancesMethods);

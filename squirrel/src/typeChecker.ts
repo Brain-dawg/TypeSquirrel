@@ -10,7 +10,8 @@ import {
     SwitchStatement, TryStatement, BlockStatement, ExpressionStatement,
     ClassMember, ClassMethod, ClassPropertyAssignment, ClassConstructor,
     TableLiteralMember, TableMethod, TablePropertyAssignment,
-    SyntaxKind, forEachChild, VScriptDiagnostic, DiagnosticSeverity
+    SyntaxKind, forEachChild, VScriptDiagnostic, DiagnosticSeverity,
+    Doc
 } from "./types";
 
 import {
@@ -19,6 +20,15 @@ import {
     parseTypeFromAnnotation, SQUIRREL_TYPES,
     NULL_TYPE, INT_TYPE, FLOAT_TYPE, STRING_TYPE, BOOL_TYPE, ANY_TYPE
 } from "./typeSystem";
+
+const nativeSymbols = [
+
+    globals.methods, globals.deprecatedMethods, globals.functions, globals.deprecatedFunctions,
+    globals.events, globals.builtInConstants, globals.builtInVariables, globals.instancesMethods,
+    globals.instancesVariables, globals.otherMethods, globals.otherVariables
+];
+
+import * as globals from "./globals";
 
 export interface TypeCheckerOptions {
     strictNullChecks?: boolean;
@@ -84,12 +94,15 @@ class SymbolTable {
 }
 
 export class TypeChecker {
+    
     private messages: TypeCheckerMessage[] = [];
     private symbolTable: SymbolTable;
     private currentScope: SymbolTable;
     private currentFile: string = "";
     private sourceText: string = "";
     private options: TypeCheckerOptions;
+    private netPropMethods: Map<string, Doc> = new Map(globals.instancesMethods["NetProps"]);
+    private netPropTypes: Map<string, Doc> = new Map(globals.netprops);
 
     constructor(options: TypeCheckerOptions = {}) {
         this.options = {
@@ -107,11 +120,121 @@ export class TypeChecker {
     private initBuiltins(): void {
         // Built-in functions
         const printFunc = new FunctionType([ANY_TYPE], NULL_TYPE);
-        this.defineSymbol("print", printFunc, { line: 0, column: 0 }, false, true, {} as Declaration);
+        
+        // Load native API symbols
+        for (const symbolMap of nativeSymbols) {
+            symbolMap.forEach((doc, name) => {
+                const type = this.parseTypeFromDocDetail(doc.detail);
+                if (type) {
+                    this.defineSymbol(name, type, { line: 0, column: 0 }, false, true, {} as Declaration);
+                }
+            });
+        }
+        
+        // this.defineSymbol("print", printFunc, { line: 0, column: 0 }, false, true, {} as Declaration);
 
         // Built-in types
-        for (const [name, type] of SQUIRREL_TYPES) {
+        for (const [name, type] of Array.from(SQUIRREL_TYPES.entries())) {
             this.defineSymbol(name, type, { line: 0, column: 0 }, false, true, {} as Declaration);
+        }
+    }
+
+    private parseTypeFromDocDetail(detail: string): SquirrelType | null {
+        try {
+            // Handle function signatures like "CBaseEntity.AcceptInput(input: string, param: string) -> bool"
+            if (detail.includes('(') && detail.includes('->')) {
+                return this.parseFunctionSignature(detail);
+            }
+            
+            // Handle simple variable/constant declarations
+            // Format might be like "variable: type" or just "type"
+            const colonIndex = detail.lastIndexOf(':');
+            if (colonIndex !== -1) {
+                const typeString = detail.substring(colonIndex + 1).trim();
+                return this.mapStringToSquirrelType(typeString);
+            }
+            
+            // Fallback: try to parse the entire detail as a type
+            return this.mapStringToSquirrelType(detail.trim());
+        } catch (e) {
+            // If parsing fails, return null to skip this symbol
+            return null;
+        }
+    }
+
+    private parseFunctionSignature(signature: string): FunctionType | null {
+        try {
+            // Extract function name and parameters
+            // Format: "ClassName.FunctionName(param1: type1, param2: type2) -> returnType"
+            const arrowIndex = signature.lastIndexOf('->');
+            if (arrowIndex === -1) {
+                return null;
+            }
+
+            const returnTypeString = signature.substring(arrowIndex + 2).trim();
+            const beforeArrow = signature.substring(0, arrowIndex).trim();
+            
+            const parenStart = beforeArrow.indexOf('(');
+            const parenEnd = beforeArrow.lastIndexOf(')');
+            if (parenStart === -1 || parenEnd === -1) {
+                return null;
+            }
+
+            const paramString = beforeArrow.substring(parenStart + 1, parenEnd);
+            
+            // Parse parameters
+            const paramTypes: SquirrelType[] = [];
+            if (paramString.trim()) {
+                const params = paramString.split(',');
+                for (const param of params) {
+                    const colonIndex = param.lastIndexOf(':');
+                    if (colonIndex !== -1) {
+                        const typeString = param.substring(colonIndex + 1).trim();
+                        const paramType = this.mapStringToSquirrelType(typeString);
+                        if (paramType) {
+                            paramTypes.push(paramType);
+                        }
+                    }
+                }
+            }
+
+            // Parse return type
+            const returnType = this.mapStringToSquirrelType(returnTypeString) || ANY_TYPE;
+            
+            return new FunctionType(paramTypes, returnType);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    private mapStringToSquirrelType(typeString: string): SquirrelType | null {
+        const cleanType = typeString.trim();
+        
+        // Map common Squirrel types
+        switch (cleanType) {
+            case 'int':
+            case 'integer':
+                return INT_TYPE;
+            case 'float':
+                return FLOAT_TYPE;
+            case 'string':
+                return STRING_TYPE;
+            case 'bool':
+            case 'boolean':
+                return BOOL_TYPE;
+            case 'null':
+            case 'void':
+                return NULL_TYPE;
+            case 'handle':
+            case 'any':
+                return ANY_TYPE;
+            case 'array':
+                return new ArrayType(ANY_TYPE);
+            case 'table':
+                return new TableType(ANY_TYPE, ANY_TYPE);
+            default:
+                // For unknown types, return ANY_TYPE as a fallback
+                return ANY_TYPE;
         }
     }
 
@@ -187,6 +310,37 @@ export class TypeChecker {
         };
     }
 
+    private validateNetProp(funcName: string, args: Expression[], functionType: FunctionType): void {
+       
+        // check the netprop 2nd argument type
+        if (funcName !== "GetTable" && funcName in this.netPropMethods) {
+
+            const propParam = args[1]["value"] ?? "";
+            let returnType = functionType.returnType;
+
+            if (!(propParam in this.netPropTypes)) {
+
+                this.warning(
+                    `Unknown NetProp: ${propParam}`,
+                    this.getLocationFromNode(args[1]),
+                    "TS2304"
+                );
+            }
+            else if ( this.netPropTypes[propParam] !== returnType.toString()) {
+
+                if (returnType instanceof NullType) {
+                    returnType = functionType.paramTypes[2] ?? ANY_TYPE;
+                }
+
+                this.error(
+                    `NetProp/DataMap '${propParam}' is not assignable to parameter of type '${functionType.paramTypes[1].toString()} (Expected ${returnType.toString()})'`,
+                    this.getLocationFromNode(args[1]),
+                    "TS2345"
+                );
+            }
+        }
+    }
+
     checkFile(fileName: string, sourceText: string, sourceFile: SourceFile): TypeCheckerMessage[] {
         this.currentFile = fileName;
         this.sourceText = sourceText;
@@ -257,6 +411,12 @@ export class TypeChecker {
                 return this.visitBlockStatement(node as BlockStatement);
             case SyntaxKind.ExpressionStatement:
                 return this.visitExpressionStatement(node as ExpressionStatement);
+            case SyntaxKind.ClassMethod:
+                return this.visitClassMethod(node as ClassMethod);
+            case SyntaxKind.ClassPropertyAssignment:
+                return this.visitClassPropertyAssignment(node as ClassPropertyAssignment);
+            case SyntaxKind.ClassConstructor:
+                return this.visitClassConstructor(node as ClassConstructor);
             default:
                 // Visit children for other node types
                 forEachChild(node, child => this.visitNode(child));
@@ -278,7 +438,7 @@ export class TypeChecker {
         // Get declared type from type annotation
         if (node.typeAnnotation) {
             declaredType = parseTypeFromAnnotation(node.typeAnnotation);
-            this.info(`Variable '${node.name.value}' declared with type: ${declaredType.toString()}`, location);
+            // this.info(`Variable '${node.name.value}' declared with type: ${declaredType.toString()}`, location);
         }
 
         // Get actual type from initializer
@@ -291,7 +451,7 @@ export class TypeChecker {
         if (node.typeAnnotation && node.initialiser) {
             if (!actualType.isAssignableTo(declaredType)) {
                 this.error(
-                    `Type '${actualType.toString()}' is not assignable to type '${declaredType.toString()}'`,
+                    `'${actualType.toString()}' is not assignable to type '${declaredType.toString()}'`,
                     location,
                     "TS2322"
                 );
@@ -337,20 +497,15 @@ export class TypeChecker {
                     paramDecl
                 );
 
-                if (paramDecl.typeAnnotation) {
-                    this.info(`Parameter '${paramDecl.name.value}': ${paramType.toString()}`, this.getLocationFromNode(paramDecl));
-                }
+                // if (paramDecl.typeAnnotation) {
+                //     this.info(`Parameter '${paramDecl.name.value}': ${paramType.toString()}`, this.getLocationFromNode(paramDecl));
+                // }
             }
         }
 
-        // Get return type
-        const returnType = node.returnType 
-            ? parseTypeFromAnnotation(node.returnType)
-            : ANY_TYPE;
-
-        if (node.returnType) {
-            this.info(`Function '${this.getFunctionName(node)}' returns: ${returnType.toString()}`, location);
-        }
+        // Get return type (TODO: Add returnType to FunctionDeclaration interface)
+        // const returnType = this.visitNode(node.returnType);
+        const returnType = ANY_TYPE;
 
         // Visit function body
         this.visitNode(node.statement);
@@ -401,10 +556,8 @@ export class TypeChecker {
             }
         }
 
-        // Get return type
-        const returnType = node.returnType 
-            ? parseTypeFromAnnotation(node.returnType)
-            : ANY_TYPE;
+        // Get return type (TODO: Add returnType to LocalFunctionDeclaration interface)
+        const returnType = ANY_TYPE;
 
         // Visit function body
         this.visitNode(node.statement);
@@ -432,23 +585,10 @@ export class TypeChecker {
         const location = this.getLocationFromNode(node);
         const className = this.getClassName(node);
         
-        this.info(`Class '${className}' defined`, location);
-
-        // Enter class scope
-        this.enterScope();
-
         // Create class type
         const classType = new ClassType(className);
 
-        // Process members
-        for (const member of node.members.elements) {
-            this.visitNode(member);
-        }
-
-        // Exit class scope
-        this.exitScope();
-
-        // Define class symbol
+        // Define class symbol first (so it's available for self-references)
         this.defineSymbol(
             className,
             classType,
@@ -457,6 +597,17 @@ export class TypeChecker {
             true,
             node
         );
+
+        // Enter class scope
+        this.enterScope();
+
+        // Process members - these will define methods and properties in the class scope
+        for (const member of node.members.elements) {
+            this.visitNode(member);
+        }
+
+        // Exit class scope
+        this.exitScope();
 
         return classType;
     }
@@ -485,20 +636,45 @@ export class TypeChecker {
     }
 
     private visitBinaryExpression(node: BinaryExpression): SquirrelType {
-        const leftType = this.visitNode(node.left);
-        const rightType = this.visitNode(node.right);
-
-        // Handle assignment operators
+        // Handle assignment operators specially
         if (node.operator === SyntaxKind.EqualsToken || node.operator === SyntaxKind.LessMinusToken) {
+            // For newslot assignments (e.g., MyClass <- class), handle the left side as a declaration
+            if (node.left.kind === SyntaxKind.Identifier && 
+                (node.right.kind === SyntaxKind.ClassExpression || node.right.kind === SyntaxKind.FunctionExpression)) {
+                
+                const identifier = node.left as Identifier;
+                const rightType = this.visitNode(node.right);
+                
+                // Define the symbol for the new assignment
+                this.defineSymbol(
+                    identifier.value,
+                    rightType,
+                    this.getLocationFromNode(identifier),
+                    false, // not mutable (it's a class/function)
+                    true,  // initialized
+                    node as any // use the binary expression as declaration
+                );
+                
+                return rightType;
+            }
+            
+            // Regular assignment - visit both sides and check compatibility
+            const leftType = this.visitNode(node.left);
+            const rightType = this.visitNode(node.right);
+            
             if (!rightType.isAssignableTo(leftType)) {
                 this.error(
-                    `Type '${rightType.toString()}' is not assignable to type '${leftType.toString()}'`,
+                    `'${rightType.toString()}' is not assignable to type '${leftType.toString()}'`,
                     this.getLocationFromNode(node),
                     "TS2322"
                 );
             }
             return leftType;
         }
+
+        // For non-assignment operators, visit both sides normally
+        const leftType = this.visitNode(node.left);
+        const rightType = this.visitNode(node.right);
 
         // Handle arithmetic operators
         if ([SyntaxKind.PlusToken, SyntaxKind.MinusToken, SyntaxKind.AsteriskToken, SyntaxKind.SlashToken].includes(node.operator)) {
@@ -525,11 +701,13 @@ export class TypeChecker {
 
     private visitCallExpression(node: CallExpression): SquirrelType {
         const functionType = this.visitNode(node.expression);
+
+        const args = node.argumentExpressions.elements;
         
         if (functionType instanceof FunctionType) {
             // Check argument count
             const expectedParams = functionType.paramTypes.length;
-            const actualArgs = node.argumentExpressions.elements.length;
+            const actualArgs = args.length;
             
             if (actualArgs !== expectedParams) {
                 this.error(
@@ -538,30 +716,61 @@ export class TypeChecker {
                     "TS2554"
                 );
             }
+            const funcName = node.expression["value"] ?? "";
 
             // Check argument types
             for (let i = 0; i < Math.min(expectedParams, actualArgs); i++) {
-                const argType = this.visitNode(node.argumentExpressions.elements[i]);
+
+                const argType = this.visitNode(args[i]);
                 const paramType = functionType.paramTypes[i];
-                
-                if (!argType.isAssignableTo(paramType)) {
+                if (!argType. isAssignableTo(paramType)) {
                     this.error(
-                        `Argument of type '${argType.toString()}' is not assignable to parameter of type '${paramType.toString()}'`,
-                        this.getLocationFromNode(node.argumentExpressions.elements[i]),
+                        `Argument '${argType.toString()}' is not assignable to parameter of type '${paramType.toString()}'`,
+                        this.getLocationFromNode(args[i]),
                         "TS2345"
                     );
                 }
             }
 
+            this.validateNetProp(funcName, args, functionType);
+
+            // // check the netprop 2nd argument type
+            // if (funcName !== "GetTable" && funcName in this.netPropMethods) {
+
+            //     const propParam = args[1].toString();
+            //     let returnType = functionType.returnType;
+
+            //     if (!(propParam in this.netPropTypes)) {
+
+            //         this.warning(
+            //             `Unknown NetProp: ${propParam}`,
+            //             this.getLocationFromNode(args[1]),
+            //             "TS2304"
+            //         );
+            //     }
+            //     else if ( this.netPropTypes[propParam] !== returnType.toString()) {
+
+            //         if (returnType instanceof NullType) {
+            //             returnType = functionType.paramTypes[2] ?? ANY_TYPE;
+            //         }
+
+            //         this.error(
+            //             `NetProp/DataMap '${propParam}' is not assignable to parameter of type '${functionType.paramTypes[1].toString()} (Expected ${returnType.toString()})'`,
+            //             this.getLocationFromNode(args[1]),
+            //             "TS2345"
+            //         );
+            //     }
+            // }
+
             return functionType.returnType;
         }
 
         return ANY_TYPE;
-    }
+    };
 
     private visitPropertyAccessExpression(node: PropertyAccessExpression): SquirrelType {
         const objectType = this.visitNode(node.expression);
-        
+
         if (objectType instanceof ClassType) {
             const memberType = objectType.members.get(node.property.value);
             if (memberType) {
@@ -602,11 +811,15 @@ export class TypeChecker {
     }
 
     private visitIdentifier(node: Identifier): SquirrelType {
+        // Don't check identifiers that are part of declarations
+        // These should be handled by their respective declaration visitors
         const symbol = this.lookupSymbol(node.value);
         if (symbol) {
             return symbol.type;
         }
 
+        // Only report "Cannot find name" for identifiers that are actually being referenced
+        // Skip this error for identifiers in declaration contexts (they'll be handled by declaration visitors)
         this.error(
             `Cannot find name '${node.value}'`,
             this.getLocationFromNode(node),
@@ -628,7 +841,7 @@ export class TypeChecker {
             const elemType = this.visitNode(node.elements.elements[i]);
             if (!elemType.isAssignableTo(elementType)) {
                 this.warning(
-                    `Array element type '${elemType.toString()}' is not assignable to inferred type '${elementType.toString()}'`,
+                    `Array element '${elemType.toString()}' is not assignable to inferred type '${elementType.toString()}'`,
                     this.getLocationFromNode(node.elements.elements[i])
                 );
             }
@@ -648,6 +861,7 @@ export class TypeChecker {
     }
 
     private visitFunctionExpression(node: FunctionExpression): SquirrelType {
+
         // Enter function scope
         this.enterScope();
 
@@ -672,10 +886,8 @@ export class TypeChecker {
             }
         }
 
-        // Get return type
-        const returnType = node.returnType 
-            ? parseTypeFromAnnotation(node.returnType)
-            : ANY_TYPE;
+        // Get return type (TODO: Add returnType to FunctionExpression interface)
+        const returnType = ANY_TYPE;
 
         // Visit function body
         this.visitNode(node.statement);
@@ -705,9 +917,17 @@ export class TypeChecker {
     }
 
     private visitReturnStatement(node: ReturnStatement): SquirrelType {
-        if (node.expression) {
-            return this.visitNode(node.expression);
+        
+        const returnType = this.visitNode(node.expression);
+
+        if (!returnType.isAssignableTo(ANY_TYPE)) {
+            this.error(
+                `Return type '${returnType.toString()}' is not assignable to type '${ANY_TYPE.toString()}'`,
+                this.getLocationFromNode(node.expression),
+                "TS2322"
+            );
         }
+
         return NULL_TYPE;
     }
 
@@ -815,7 +1035,153 @@ export class TypeChecker {
     }
 
     private visitExpressionStatement(node: ExpressionStatement): SquirrelType {
+        // this.validateNetProp(node.expression["value"], node.expression["argumentExpressions"].elements, this.visitNode(node.expression) as FunctionType);
         return this.visitNode(node.expression);
+    }
+
+    private visitClassMethod(node: ClassMethod): SquirrelType {
+        const location = this.getLocationFromNode(node);
+        
+        // Enter method scope
+        this.enterScope();
+
+        // Process parameters
+        const paramTypes: SquirrelType[] = [];
+        for (const param of node.parameters.elements) {
+            if (param.kind === SyntaxKind.ParameterDeclaration) {
+                const paramDecl = param as ParameterDeclaration;
+                const paramType = paramDecl.typeAnnotation 
+                    ? parseTypeFromAnnotation(paramDecl.typeAnnotation)
+                    : ANY_TYPE;
+                
+                paramTypes.push(paramType);
+                this.defineSymbol(
+                    paramDecl.name.value,
+                    paramType,
+                    this.getLocationFromNode(paramDecl),
+                    true,
+                    true,
+                    paramDecl
+                );
+            }
+        }
+
+        // Get return type (TODO: Add returnType to ClassMethod interface)
+        const returnType = ANY_TYPE;
+
+        // Visit method body
+        if (node.statement) {
+            this.visitNode(node.statement);
+        }
+
+        // Exit method scope
+        this.exitScope();
+
+        // Create method type
+        const methodType = new FunctionType(paramTypes, returnType);
+        
+        // Define method symbol in class scope
+        this.defineSymbol(
+            this.getMethodName(node),
+            methodType,
+            location,
+            false,
+            true,
+            node
+        );
+
+        return methodType;
+    }
+
+    private visitClassPropertyAssignment(node: ClassPropertyAssignment): SquirrelType {
+        const location = this.getLocationFromNode(node);
+        let declaredType: SquirrelType = ANY_TYPE;
+        
+        // Get declared type from type annotation (TODO: Add typeAnnotation to ClassPropertyAssignment interface)
+        // if (node.typeAnnotation) {
+        //     declaredType = parseTypeFromAnnotation(node.typeAnnotation);
+        // }
+
+        // Get actual type from initializer
+        let actualType: SquirrelType = ANY_TYPE;
+        if (node.initialiser) {
+            actualType = this.visitNode(node.initialiser);
+        }
+
+        // Type compatibility check
+        // if (node.typeAnnotation && node.initialiser) {
+        //     if (!actualType.isAssignableTo(declaredType)) {
+        //         this.error(
+        //             `Type '${actualType.toString()}' is not assignable to type '${declaredType.toString()}'`,
+        //             location,
+        //             "TS2322"
+        //         );
+        //     }
+        // }
+
+        // Define property symbol in class scope
+        const finalType = actualType;
+        this.defineSymbol(
+            this.getPropertyName(node),
+            finalType,
+            location,
+            true,
+            !!node.initialiser,
+            node
+        );
+
+        return finalType;
+    }
+
+    private visitClassConstructor(node: ClassConstructor): SquirrelType {
+        const location = this.getLocationFromNode(node);
+        
+        // Enter constructor scope
+        this.enterScope();
+
+        // Process parameters
+        const paramTypes: SquirrelType[] = [];
+        for (const param of node.parameters.elements) {
+            if (param.kind === SyntaxKind.ParameterDeclaration) {
+                const paramDecl = param as ParameterDeclaration;
+                const paramType = paramDecl.typeAnnotation 
+                    ? parseTypeFromAnnotation(paramDecl.typeAnnotation)
+                    : ANY_TYPE;
+                
+                paramTypes.push(paramType);
+                this.defineSymbol(
+                    paramDecl.name.value,
+                    paramType,
+                    this.getLocationFromNode(paramDecl),
+                    true,
+                    true,
+                    paramDecl
+                );
+            }
+        }
+
+        // Visit constructor body
+        if (node.statement) {
+            this.visitNode(node.statement);
+        }
+
+        // Exit constructor scope
+        this.exitScope();
+
+        // Constructor doesn't have a return type, it returns the class instance
+        const constructorType = new FunctionType(paramTypes, ANY_TYPE);
+        
+        // Define constructor symbol in class scope
+        this.defineSymbol(
+            "constructor",
+            constructorType,
+            location,
+            false,
+            true,
+            node
+        );
+
+        return constructorType;
     }
 
     // Helper methods
@@ -827,6 +1193,20 @@ export class TypeChecker {
     }
 
     private getClassName(node: ClassDeclaration): string {
+        if (node.name.kind === SyntaxKind.Identifier) {
+            return (node.name as Identifier).value;
+        }
+        return "<computed>";
+    }
+
+    private getMethodName(node: ClassMethod): string {
+        if (node.name.kind === SyntaxKind.Identifier) {
+            return (node.name as Identifier).value;
+        }
+        return "<computed>";
+    }
+
+    private getPropertyName(node: ClassPropertyAssignment): string {
         if (node.name.kind === SyntaxKind.Identifier) {
             return (node.name as Identifier).value;
         }

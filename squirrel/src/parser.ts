@@ -1393,10 +1393,11 @@ export class Parser {
 		
 		this.parseExpected(SyntaxKind.FunctionKeyword);
 		const { environment, parameters, returnType } = this.parseFunctionEnvironmentAndParameters();
+		const typeAnnotation = this.parseTypeAnnotation();
 		const statement = this.parseStatement();
 
 		const end = this.lexer.lastToken.end;
-		const node: FunctionExpression = { kind: SyntaxKind.FunctionExpression, start, end, environment, parameters, statement };
+		const node: FunctionExpression = { kind: SyntaxKind.FunctionExpression, start, end, environment, parameters, statement, typeAnnotation };
 		overrideParentInImmediateChildren(node);
 
 		return node;
@@ -1844,6 +1845,8 @@ export class Parser {
 	private parseFunctionStatement(): FunctionDeclaration {
 		const start = this.token.start;
 
+		const typeAnnotation = this.parseTypeAnnotation();
+
 		this.parseExpected(SyntaxKind.FunctionKeyword);
 		let expression: Identifier | PropertyAccessExpression = this.parseIdentifierWithDiagnostic();
 		while (this.parseOptional(SyntaxKind.ColonColonToken)) {
@@ -1860,7 +1863,7 @@ export class Parser {
 		const statement = this.parseStatement();
 
 		const end = this.lexer.lastToken.end;
-		const node: FunctionDeclaration = { kind: SyntaxKind.FunctionDeclaration, start, end, name, environment, parameters, statement };
+		const node: FunctionDeclaration = { kind: SyntaxKind.FunctionDeclaration, start, end, name, environment, parameters, statement, typeAnnotation };
 		overrideParentInImmediateChildren(node);
 
 		return node;

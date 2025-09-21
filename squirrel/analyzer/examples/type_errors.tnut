@@ -3,62 +3,63 @@
 // Example file with intentional type errors for testing
 
 // Type mismatch errors
-local name: string = 123;  // Error: cannot assign int to string
-age: int <- "twenty"; // Error: cannot assign string to int
+local name: string = 123
+age: int <- "twenty"
 
 // Function parameter type errors
 function greet(name: string): string {
-    return "Hello " + name;
+    return "Hello " + name
 }
 
 function GetWorldspawn(): entity {
-    return Entities.First();
+    return Entities.First()
 }
 
-local result: string = greet(42); // Error: cannot pass int where string expected
+local result:  string = greet(42)
+//local numbers: array<int> = ["one", "two", "three"]
+local numbers: array<string> = ["one", "two", "three"]
 
-// Array type errors
-local numbers: array<int> = ["one", "two", "three"]; // Error: string elements in int array
+NetProps.SetPropString(null, "m_iName", 1234)
 
 // Return type errors
 function getAge(): int {
-    return "unknown"; // Error: cannot return string where int expected
+    return "unknown"
 }
 
 // Null assignment errors
-local required: string = null; // Warning: assigning null to non-optional type
+local required: string = null
 
 // Optional type usage
-local optional: string? = "hello";
-local length: int = optional.len(); // Error: cannot call method on optional without null check
+local optional: string? = "hello"
+local length: int = optional.len() // Error: cannot call method on optional without null check
 
 // Undefined variable
-local x: int = undefinedVar; // Error: undefined variable
+local x: int = undefinedVar // Error: undefined variable
 
 // Wrong number of arguments
 function add(a: int, b: int): int {
-    return a + b;
+    return a + b
 }
 
-local sum: int = add(5); // Error: missing argument
+local sum: int = add(5) // Error: missing argument
 
 
 // Class inheritance errors
 class Animal {
-    name: string = null;
+    name: string = null
     
     constructor(name: string) {
-        this.name = name;
+        this.name = name
     }
 }
 
 
 class Dog extends Animal {
-    breed: string = null;
+    breed: string = null
     
     constructor(name: string, breed: string) {
-        base.constructor(name);
-        this.breed = breed;
+        base.constructor(name)
+        this.breed = breed
     }
 }
 
@@ -66,11 +67,11 @@ function MakeClass(): class {
 
     return class {
         function test() {
-            return true;
+            return true
         }
     }
 }
 
 
-local pet: Animal = Dog("Rex", "German Shepherd"); // OK: subclass assignable to base class
-local specificDog: Dog = Animal("Generic"); // Error: cannot assign base class to subclass
+local pet: Animal = Dog("Rex", "German Shepherd") // OK: subclass assignable to base class
+local specificDog: Dog = Animal("Generic") // Error: cannot assign base class to subclass
