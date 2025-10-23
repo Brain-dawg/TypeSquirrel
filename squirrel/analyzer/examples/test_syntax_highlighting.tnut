@@ -23,8 +23,7 @@ MyOtherClass <- class {
 
 // Function with type annotations
 function processEntity(ent: entity): bool {
-    if (ent == null) return false
-    return true
+    return ent == null
 }
 
 // Various contexts where keywords should be highlighted correctly
