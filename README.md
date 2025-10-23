@@ -10,24 +10,24 @@ This is/was mostly an experiment to see how useful optional type checking would 
 
 ### Variable Declarations
 
-```squirrel
-local name: string = "John";
-local age: int = 25;
-local height: float = 5.9;
+```lua
+local name: string   = "John";
+local age: int       = 25;
+local height: float  = 5.9;
 local isActive: bool = true;
-local data: any = null;
+local data: any      = null;
 ```
 
 ### Array Types
 
-```squirrel
+```lua
 local numbers: array<int> = [1, 2, 3];
 local names: string[] = ["Alice", "Bob"];
 ```
 
 ### Function Types
 
-```squirrel
+```lua
 // Function declaration
 function greet(name: string, age: int): string {
     return "Hello " + name + ", age " + age;
@@ -36,7 +36,7 @@ function greet(name: string, age: int): string {
 
 ### Table Types
 
-```squirrel
+```lua
 local person: {name: string, age: int} = {
     name = "John",
     age = 30
@@ -45,14 +45,14 @@ local person: {name: string, age: int} = {
 
 ### Union and Optional Types
 
-```squirrel
+```lua
 local value: int | string = "could be either";
 local optional: string? = null; // Equivalent to string | null
 ```
 
 ### Class Types
 
-```squirrel
+```lua
 class Person {
     name: string;
     age: int;
