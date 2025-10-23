@@ -68,18 +68,6 @@ class Person {
 }
 ```
 
-## Type Checking Rules
-
-The analyzer enforces the following type checking rules:
-
-1. **Assignment Compatibility**: Values must be assignable to their declared types
-2. **Function Calls**: Arguments must match parameter types
-3. **Return Types**: Function returns must match declared return type
-4. **Array Element Types**: Array elements must match the declared element type
-5. **Table Member Types**: Table members must match their declared types
-6. **Null Safety**: Optional types must be checked before use
-7. **Class Inheritance**: Subclasses are assignable to base classes
-
 ## Error Categories
 
 - **Type Mismatch**: Assignment of incompatible types
