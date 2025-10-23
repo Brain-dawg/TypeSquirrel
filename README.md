@@ -1,6 +1,72 @@
 # TypeSquirrel
 
-A **static type analyzer for the Squirrel programming language**.  Provides type checking capabilities similar to MyPy and TypeScript.  Type annotations are stripped to produce vanilla Squirrel/VScript code.
+A **static type analyzer for the Squirrel programming language**.  Catch type errors when debugging!
+
+This is an extremely unfinished side project in the proof-of-concept stages, there are obvious problems with the linter/analyzer, awkward unfinished glue code all over the place, etc.  Making this public because I don't know when I'll pick it up again and I'd rather not leave it bit-rotting.
+
+This is/was mostly an experiment to see how useful optional type checking would be in VScript, similar to MyPy.  The short answer is it's very useful, but the concerns of a bifurcated ecosystem that depends on a specialized third-party tool to strip the type annotations means this project is temporarily shelved.  This idea would be better off as something that is still fully vanilla squirrel compatible using inline comments, and a custom linter/highlighter to pretty-print them in-editor, rather than the nuclear approach this idea is going for.
+
+## Type Annotation Syntax
+
+### Variable Declarations
+
+```squirrel
+local name: string = "John";
+local age: int = 25;
+local height: float = 5.9;
+local isActive: bool = true;
+local data: any = null;
+```
+
+### Array Types
+
+```squirrel
+local numbers: array<int> = [1, 2, 3];
+local names: string[] = ["Alice", "Bob"];
+```
+
+### Function Types
+
+```squirrel
+// Function declaration
+function greet(name: string, age: int): string {
+    return "Hello " + name + ", age " + age;
+}
+```
+
+### Table Types
+
+```squirrel
+local person: {name: string, age: int} = {
+    name = "John",
+    age = 30
+};
+```
+
+### Union and Optional Types
+
+```squirrel
+local value: int | string = "could be either";
+local optional: string? = null; // Equivalent to string | null
+```
+
+### Class Types
+
+```squirrel
+class Person {
+    name: string;
+    age: int;
+    
+    constructor(name: string, age: int) {
+        this.name = name;
+        this.age = age;
+    }
+    
+    function getName(): string {
+        return this.name;
+    }
+}
+```
 
 ## Type Checking Rules
 
@@ -18,7 +84,6 @@ The analyzer enforces the following type checking rules:
 
 - **Type Mismatch**: Assignment of incompatible types
 - **Undefined Variable**: Reference to undeclared variables
-- **Wrong Argument Count**: Function calls with incorrect number of arguments
 - **Invalid Member Access**: Access to non-existent table members
 - **Null Pointer**: Use of potentially null values without checks
 
@@ -78,71 +143,4 @@ if result["success"]:
     
     if result["stripped_code"]:
         print("Stripped code:", result["stripped_code"])
-```
-
-## Type Annotation Syntax
-
-### Variable Declarations
-
-```squirrel
-local name: string = "John";
-local age: int = 25;
-local height: float = 5.9;
-local isActive: bool = true;
-local data: any = null;
-```
-
-### Array Types
-
-```squirrel
-local numbers: array<int> = [1, 2, 3];
-local names: string[] = ["Alice", "Bob"];
-```
-
-### Function Types
-
-```squirrel
-// Function declaration
-function greet(name: string, age: int): string {
-    return "Hello " + name + ", age " + age;
-}
-
-// Function type variable
-local callback: (string, int) -> bool = function(msg: string, code: int): bool {
-    return code == 0;
-};
-```
-
-### Table Types
-
-```squirrel
-local person: {name: string, age: int} = {
-    name = "John",
-    age = 30
-};
-```
-
-### Union and Optional Types
-
-```squirrel
-local value: int | string = "could be either";
-local optional: string? = null; // Equivalent to string | null
-```
-
-### Class Types
-
-```squirrel
-class Person {
-    name: string;
-    age: int;
-    
-    constructor(name: string, age: int) {
-        this.name = name;
-        this.age = age;
-    }
-    
-    function getName(): string {
-        return this.name;
-    }
-}
 ```
