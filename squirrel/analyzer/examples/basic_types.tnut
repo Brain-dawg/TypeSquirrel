@@ -33,6 +33,13 @@ local names: array<string> = ["a", "b", "c"]
 local entities: array<entity> = [Entities.First()]
 local optionalArray: array<string>? = ["test"]
 
+// table 
+local tbl: table<string, int?> = {
+    "test1": 1
+    "test2": 2
+    "test3": null
+}
+
 // Function parameters with types
 function greet(name: string, age: int): string {
     return "Hello " + name + ", you are " + age

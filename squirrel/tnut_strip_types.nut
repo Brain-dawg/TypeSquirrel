@@ -438,7 +438,7 @@ function stripTypeAnnotationsFromFile(inputFile, outputFile = null) {
         // Read source file
         local sourceCode = FileToString(inputFile);
         if (sourceCode == null) {
-            print("Error: Could not read file: " + inputFile);
+            print("Error: Could not read file: " + inputFile + "\n");
             return false;
         }
         
@@ -460,16 +460,16 @@ function stripTypeAnnotationsFromFile(inputFile, outputFile = null) {
         // Write stripped code
         local success = StringToFile(strippedCode, outputFile);
         if (success) {
-            print("Successfully stripped type annotations from: " + inputFile);
-            print("Output written to: " + outputFile);
+            print("Successfully stripped type annotations from: " + inputFile + "\n");
+            print("Output written to: " + outputFile + "\n");
             return true;
         } else {
-            print("Error: Could not write to file: " + outputFile);
+            print("Error: Could not write to file: " + outputFile + "\n");
             return false;
         }
         
     } catch (e) {
-        print("Error processing file: " + e);
+        print("Error processing file: " + e + "\n");
         return false;
     }
 }
@@ -479,21 +479,21 @@ function stripTypeAnnotationsFromFile(inputFile, outputFile = null) {
  */
 function demonstrateTypeStripping() {
 
-    print("=== Type Annotation Stripper Demo ===");
+    print("=== Type Annotation Stripper Demo ===\n");
 
-    print("Original code:");
-    print("==============");
+    print("Original code:\n");
+    print("==============\n");
     print(exampleCode);
     
     // Strip type annotations
     local stripper = TypeAnnotationStripper(exampleCode);
     local strippedCode = stripper.stripAnnotations();
     
-    print("\nStripped code:");
-    print("==============");
+    print("\nStripped code:\n");
+    print("==============\n");
     print(strippedCode);
     
-    print("\n=== Demo completed ===");
+    print("\n=== Demo completed ===\n");
 }
 
 // Export the main functions
@@ -519,24 +519,22 @@ function main() {
     // This is a simplified version - in practice you'd need to handle command line args differently
     // For now, let's make it interactive
     
-    print("Squirrel Type Annotation Stripper");
-    print("=================================");
-    print("");
+    print("Squirrel Type Annotation Stripper\n");
+    print("=================================\n");
     
     // Check if user wants demo
-    print("Choose an option:");
-    print("1. Strip type annotations from a file");
-    print("2. Run demonstration");
-    print("3. Show help");
-    print("");
+    print("Choose an option:\n");
+    print("1. Strip type annotations from a file\n");
+    print("2. Run demonstration\n");
+    print("3. Show help\n");
+    print("\n");
     
     // In a real CLI, you'd read from stdin or command line args
     // For this demo, let's just run the demonstration
     demonstrateTypeStripping();
-    
-    print("");
-    print("To use this tool with actual files, you would call:");
-    print("stripTypeAnnotationsFromFile(\"input.nut\", \"output.nut\");");
+
+    print("To use this tool with actual files, you would call:\n");
+    print("stripTypeAnnotationsFromFile(\"input.nut\", \"output.nut\");\n");
 }
 
 /**
@@ -544,10 +542,10 @@ function main() {
  */
 function processFile(inputFile, outputFile = null) {
 
-    print("Processing file: " + inputFile);
+    print("Processing file: " + inputFile + "\n");
     
     if (!stripTypeAnnotationsFromFile(inputFile, outputFile)) {
-        print("Failed to process file: " + inputFile);
+        print("Failed to process file: " + inputFile + "\n");
         return false;
     }
     
@@ -562,7 +560,7 @@ function processFiles(inputFiles, outputDir = null) {
     local successCount = 0;
     local totalCount = inputFiles.len();
     
-    print("Processing " + totalCount + " files...");
+    print("Processing " + totalCount + " files...\n");
     
     foreach (inputFile in inputFiles) {
         local outputFile = outputDir ? outputDir + "/" + getBaseName(inputFile) : null;
@@ -573,7 +571,7 @@ function processFiles(inputFiles, outputDir = null) {
     }
     
     print("");
-    print("Results: " + successCount + "/" + totalCount + " files processed successfully");
+    print("Results: " + successCount + "/" + totalCount + " files processed successfully\n");
     
     return successCount == totalCount;
 }
@@ -603,7 +601,7 @@ function processBatch(inputDir, outputDir = null) {
 
     // Note: Squirrel doesn't have built-in directory listing
     // This would need to be implemented with external tools or C++ extensions
-    print("Batch processing not implemented in pure Squirrel");
+    print("Batch processing not implemented in pure Squirrel\n");
     print("You would need to implement directory listing functionality");
     
     // Example of how you might call it if you had file listing:
@@ -620,17 +618,16 @@ function processBatch(inputDir, outputDir = null) {
  */
 function interactiveMode() {
 
-    print("Interactive Type Annotation Stripper");
-    print("====================================");
-    print("");
+    print("Interactive Type Annotation Stripper\n");
+    print("====================================\n");
     
     while (true) {
-        print("Options:");
-        print("1. Process a single file");
-        print("2. Run demonstration");
-        print("3. Exit");
-        print("");
-        print("Enter your choice (1-3): ");
+        print("Options:\n");
+        print("1. Process a single file\n");
+        print("2. Run demonstration\n");
+        print("3. Exit\n");
+        print("\n");
+        print("Enter your choice (1-3): \n");
         
         // In a real implementation, you'd read from stdin
         // For demo, let's just run the demonstration
@@ -644,7 +641,7 @@ function interactiveMode() {
  */
 function exampleUsage() {
 
-    print("=== Programmatic Usage Example ===");
+    print("=== Programmatic Usage Example ===\n");
     
     // Example 1: Strip types from a string
     local codeWithTypes = @"
@@ -662,21 +659,20 @@ class Calculator {
 }
 ";
     
-    print("Original code:");
+    print("Original code:\n");
     print(codeWithTypes);
     
     local stripper = TypeAnnotationStripper(codeWithTypes);
     local strippedCode = stripper.stripAnnotations();
     
-    print("\nStripped code:");
+    print("\nStripped code:\n");
     print(strippedCode);
     
-    print("\n=== Example completed ===");
+    print("\n=== Example completed ===\n");
 }
 
 // Run the main function
 main();
 
 // Also demonstrate example usage
-print("\n");
 exampleUsage();

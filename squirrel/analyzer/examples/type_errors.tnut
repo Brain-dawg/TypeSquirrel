@@ -53,8 +53,9 @@ class Animal {
     }
 }
 
-
+// class member type errors
 class Dog extends Animal {
+
     breed: string = null
     
     constructor(name: string, breed: string) {

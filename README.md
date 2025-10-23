@@ -144,3 +144,10 @@ if result["success"]:
     if result["stripped_code"]:
         print("Stripped code:", result["stripped_code"])
 ```
+## Ways to improve this
+- Type inference.
+- Entities should be inherently nullable, with an ! operator to tell the analyzer otherwise (C# style).  The only exception to this is worldspawn, which can never be null without the engine crashing.
+- netprop and native function argument type errors.  Started but not working atm.
+- entity class names instead of just a generic "entity" type (CTFPlayer, CTriggerOnce, etc.)
+- Newslot operators don't work (`foo: string <- "bar"`), analyzer is bad and thinks this is part of a ternary.
+- Error checking on class members is limited or nonexistent.  This may be the case with tables too?
